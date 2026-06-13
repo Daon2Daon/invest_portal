@@ -7,3 +7,5 @@ venv/
 node_modules/
 dist/
 .pytest_cache/
+# Vite 빌드 산출물 (Docker 빌드 단계에서 재생성)
+app/static/ui/

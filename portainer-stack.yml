@@ -1,0 +1,48 @@
+# Portainer 배포용 스택 (Git 리포에서 빌드)
+#
+# 사용법 (Portainer):
+#   Stacks → Add stack → "Repository" 빌드 방식 선택
+#     - Repository URL  : 이 리포 주소
+#     - Compose path    : portainer-stack.yml
+#   → 아래 "Environment variables" 섹션에 시크릿/접속값 입력 후 Deploy.
+#
+# Portainer 스택 환경변수로 채울 값 (좌측=키, 직접 입력):
+#   DATABASE_URL   (필수)  예) postgresql+asyncpg://ai_agent:secret@100.114.126.67:5432/agent_db
+#   FERNET_KEY     (필수)  python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+#   SCHEMA_NAME    (선택)  기본 invest
+#   HOST_PORT      (선택)  호스트에 노출할 포트 (기본 8000)
+#
+# DB 네트워크 참고:
+#   - 외부 공유 PostgreSQL(예: 100.114.126.67, Tailscale/LAN)을 쓰는 경우 별도 네트워크 설정 불필요.
+#     컨테이너가 호스트를 통해 그 IP로 outbound 하면 된다.
+#   - 만약 PostgreSQL이 같은 Docker 호스트의 "컨테이너"라면, 그 컨테이너가 속한 네트워크에 합류해야 한다.
+#     그 경우 아래 networks 섹션(주석) 을 해제하고 DATABASE_URL host를 postgres 컨테이너 이름으로 지정한다.
+services:
+  invest-portal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: invest_portal:latest
+    container_name: invest_portal
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      FERNET_KEY: ${FERNET_KEY}
+      SCHEMA_NAME: ${SCHEMA_NAME:-invest}
+    healthcheck:
+      # python:slim 이미지엔 curl이 없으므로 표준 라이브러리로 헬스체크
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    # --- PostgreSQL이 같은 Docker 호스트의 컨테이너일 때만 사용 ---
+    # networks:
+    #   - dbnet
+
+# networks:
+#   dbnet:
+#     external: true
+#     name: ${DB_NETWORK}

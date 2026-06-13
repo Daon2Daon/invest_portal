@@ -1,4 +1,6 @@
-const BASE = "http://localhost:8000";
+// 빈 문자열 = 같은 오리진. 프로덕션(Docker)에선 FastAPI가 SPA·API를 함께 서빙하고,
+// dev에선 Vite 프록시(/api → :8000)가 처리한다.
+const BASE = "";
 
 async function j<T>(p: string, init?: RequestInit): Promise<T> {
   const r = await fetch(BASE + p, {

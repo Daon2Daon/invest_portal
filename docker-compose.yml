@@ -1,0 +1,19 @@
+# 로컬 테스트용 compose. 이미지를 빌드하고 .env를 주입해 단일 컨테이너로 실행한다.
+#
+# 사용법:
+#   docker compose up --build        # 빌드 후 실행 → http://localhost:8000
+#   docker compose down
+#
+# 전제:
+#   - .env 에 DATABASE_URL, FERNET_KEY 가 채워져 있어야 한다(외부 공유 PostgreSQL).
+#   - DATABASE_URL 의 host(예: 100.114.126.67)는 컨테이너에서 도달 가능해야 한다.
+#     (호스트가 Tailscale 등으로 그 IP에 접속 가능하면 기본 bridge로 outbound 됨)
+services:
+  invest-portal:
+    build: .
+    container_name: invest_portal
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

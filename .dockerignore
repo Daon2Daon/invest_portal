@@ -1,0 +1,31 @@
+# Git / secrets / local env
+.git
+.gitignore
+.env
+.env.*
+
+# Python build context noise
+.venv
+__pycache__
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# 테스트는 런타임 이미지에 불필요
+tests/
+
+# 문서는 런타임 이미지에 불필요 (리포에는 git으로 유지)
+docs/
+
+# Editor / OS
+.cursor
+.cursorrules
+.DS_Store
+@eaDir/
+**/@eaDir/
+
+# Node 빌드 산출물 (Docker 빌드 단계에서 재생성)
+frontend/node_modules
+app/static/ui

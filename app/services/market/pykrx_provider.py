@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 from pykrx import stock
 from app.services.market.types import ResolvedAsset, Quote
+from app.services.market._num import finite
 
 
 def _today_kst() -> str:
@@ -54,7 +55,9 @@ class PykrxProvider:
             df = self._ohlcv(ticker, asset_type)
             if df is None or df.empty:
                 return None
-            price = float(df["종가"].iloc[-1])
+            price = finite(df["종가"].iloc[-1])
+            if price is None:
+                return None
             return ResolvedAsset(
                 ticker=ticker, name=name, asset_type=asset_type, market="KR",
                 currency="KRW", data_source="pykrx", fetch_symbol=ticker,
@@ -68,14 +71,16 @@ class PykrxProvider:
             df = self._ohlcv(fetch_symbol, asset_type)
             if df is None or df.empty:
                 return Quote(price=0.0, currency="KRW", status="error")
-            price = float(df["종가"].iloc[-1])
+            price = finite(df["종가"].iloc[-1])
+            if price is None:
+                return Quote(price=0.0, currency="KRW", status="error")
             change = change_pct = None
             if len(df) >= 2:
-                prev = float(df["종가"].iloc[-2])
+                prev = finite(df["종가"].iloc[-2])
                 if prev:
-                    change = price - prev
-                    change_pct = change / prev * 100
-            vol = float(df["거래량"].iloc[-1]) if "거래량" in df else None
+                    change = finite(price - prev)
+                    change_pct = finite(change / prev * 100) if change is not None else None
+            vol = finite(df["거래량"].iloc[-1]) if "거래량" in df else None
             return Quote(price=price, currency="KRW", change=change,
                          change_pct=change_pct, volume=vol, as_of=date.today(), status="ok")
         except Exception:

@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -28,7 +29,11 @@ async def resolve(req: ResolveRequest):
 async def create_asset(body: AssetCreate, db: AsyncSession = Depends(get_db)):
     asset = Asset(**body.model_dump())
     db.add(asset)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "이미 등록된 티커/시장 조합입니다.")
     await db.refresh(asset)
     return asset
 

@@ -3,15 +3,24 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import Holding
+from app.models import Holding, Asset
 from app.schemas.holding import HoldingCreate, HoldingUpdate, HoldingOut
+from app.services.fx.fx_service import get_rate_to_krw
 
 router = APIRouter(prefix="/api/holdings", tags=["holdings"])
 
 
 @router.post("", response_model=HoldingOut)
 async def create_holding(body: HoldingCreate, db: AsyncSession = Depends(get_db)):
-    h = Holding(**body.model_dump())
+    data = body.model_dump()
+    if data.get("purchase_fx_rate") is None:
+        asset = await db.get(Asset, data["asset_id"])
+        if asset is not None:
+            if asset.currency == "KRW":
+                data["purchase_fx_rate"] = 1
+            else:
+                data["purchase_fx_rate"] = await get_rate_to_krw(db, asset.currency, on=data["purchase_date"])
+    h = Holding(**data)
     db.add(h)
     await db.commit()
     await db.refresh(h)

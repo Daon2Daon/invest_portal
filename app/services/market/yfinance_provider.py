@@ -1,6 +1,7 @@
 from datetime import date
 import yfinance as yf
 from app.services.market.types import ResolvedAsset, Quote
+from app.services.market._num import finite
 
 # yfinance quoteType → 내부 asset_type
 _QUOTE_TYPE_MAP = {
@@ -31,7 +32,9 @@ class YFinanceProvider:
             hist = inst.history(period="7d")
             if hist is None or hist.empty:
                 return None
-            price = float(hist["Close"].iloc[-1])
+            price = finite(hist["Close"].iloc[-1])
+            if price is None:
+                return None
             info = {}
             try:
                 info = inst.info or {}
@@ -61,14 +64,16 @@ class YFinanceProvider:
             if hist is None or hist.empty:
                 return Quote(price=0.0, currency=currency, status="error")
             close = hist["Close"]
-            price = float(close.iloc[-1])
+            price = finite(close.iloc[-1])
+            if price is None:
+                return Quote(price=0.0, currency=currency, status="error")
             change = change_pct = None
             if len(close) >= 2:
-                prev = float(close.iloc[-2])
+                prev = finite(close.iloc[-2])
                 if prev:
-                    change = price - prev
-                    change_pct = change / prev * 100
-            vol = float(hist["Volume"].iloc[-1]) if "Volume" in hist else None
+                    change = finite(price - prev)
+                    change_pct = finite(change / prev * 100) if change is not None else None
+            vol = finite(hist["Volume"].iloc[-1]) if "Volume" in hist else None
             return Quote(price=price, currency=currency, change=change,
                          change_pct=change_pct, volume=vol, as_of=date.today(), status="ok")
         except Exception:

@@ -6,10 +6,12 @@
 - spec: `docs/superpowers/specs/2026-06-13-invest-portal-phase1-portfolio-core-design.md`
 - plan: `docs/superpowers/plans/2026-06-13-invest-portal-phase1-portfolio-core.md`
 - 내용: 앱 골격·DB 부트스트랩(ensure_schema)·멀티마켓 티커 해석(US/KR/JP/코인, ETF/ETN 분기, 채권 수동 모드)·포트폴리오 lot CRUD·KRW 환율변환(환차익 분리)·React 대시보드.
-- 상태: 백엔드 단위테스트 17 passed / 4 skipped(DB 통합테스트는 자격증명 없어 skip), 프론트 빌드 통과.
-- **미해결(사용자 작업 필요):**
-  - **DB 자격증명**: `.env`의 `DATABASE_URL` 비밀번호(mook123)가 psql/asyncpg에서 인증 실패함(postgres-agent MCP만 사전구성된 자격증명으로 접속). 올바른 비밀번호로 `.env`를 갱신해야 앱 부팅·통합테스트 가능.
-  - 통합테스트 실행: `.env`에 별도 `TEST_DATABASE_URL`(전용 test 스키마 권장) 설정 시 4개 skip 테스트가 실제 실행됨. 단, conftest는 `Base.metadata`(invest 스키마)에 drop_all/create_all을 하므로 운영 invest 스키마와 다른 DB/스키마를 가리킬 것.
+- 상태: **실DB 검증 완료** — 단위테스트 17 + DB 통합테스트 4 = **전체 21 passed**(invest_test 격리 스키마에서 실행), 앱 부팅 시 ensure_schema가 새 5개 테이블 생성, 실제 API 엔드투엔드 흐름(resolve AAPL→등록→FX→holding 자동 fx채움→portfolio KRW환산) 실데이터로 동작 확인. 프론트 빌드 통과.
+- **DB 상태(2026-06-13 정리됨):**
+  - DB 비밀번호: `mook123!` (느낌표 포함). `.env`의 `DATABASE_URL`에 반영됨(로컬, 미커밋).
+  - 기존 `invest` 스키마의 9개 옛 테이블 + 시퀀스를 **`invest_legacy`로 이동**(rename은 admin 소유라 불가 → ai_agent가 테이블 단위 이동). 새 `invest`는 앱 5개 테이블만(비어 있음, 사용자 신규 입력 대기).
+  - `invest_legacy.economist_claims`(134행)·experts·video_asset_mentions 보존됨. **`anthropic-skills:economist-claims` 스킬이 `invest.economist_claims`를 참조하므로, 사용자가 스킬을 `invest_legacy`로 수정 예정**(DB는 현 상태 유지).
+  - 통합테스트 재실행: `SCHEMA_NAME=invest_test TEST_DATABASE_URL='postgresql+asyncpg://ai_agent:mook123!@100.114.126.67:5432/agent_db' .venv/bin/pytest -q` (격리 스키마, 운영 invest 무손상).
   - 실행: 백엔드 `.venv/bin/uvicorn app.main:app`, 프론트 `cd frontend && npm run dev`(localhost:5173).
 - 향후 폴리시(리뷰에서 minor로 분류, 미적용): manual_price_currency 환산 처리, 라우트 response_model 보강, holdings.asset_id 인덱스, CORS config화.
 

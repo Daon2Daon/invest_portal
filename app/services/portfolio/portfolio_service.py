@@ -1,6 +1,3 @@
-from app.db import SessionLocal  # 사용처(get_portfolio)에서 import; 계산 함수는 DB 무관
-
-
 def aggregate_position(lots: list[dict], current_price: float, fx_now: float) -> dict:
     """동일 자산의 lot들을 집계해 KRW 기준 손익을 계산한다.
 

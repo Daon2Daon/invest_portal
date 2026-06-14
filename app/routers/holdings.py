@@ -35,6 +35,9 @@ async def create_with_asset(body: HoldingWithAssetCreate, db: AsyncSession = Dep
         )
         db.add(asset)
         await db.flush()   # asset_id 확보(커밋 전)
+    # 기존 자산 재추가(분할매수)는 자산의 asset_class를 덮어쓰지 않는다.
+    # (재추가 시 미리보기는 유형 기본값을 채우므로, 덮어쓰면 사용자의 분류가 초기화됨.
+    #  자산군 변경은 PUT /api/assets/{id} 로 한다.)
     h = Holding(
         asset_id=asset.asset_id, quantity=body.quantity, purchase_price=body.purchase_price,
         purchase_date=body.purchase_date, fee=body.fee, memo=body.memo,

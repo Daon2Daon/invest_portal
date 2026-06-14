@@ -1,4 +1,5 @@
 from app.services.portfolio.portfolio_service import aggregate_position
+from app.services.portfolio.portfolio_service import build_allocation
 
 
 def test_aggregate_position_single_lot_krw():
@@ -43,3 +44,26 @@ def test_aggregate_position_multi_lot_weighted_avg():
     pos = aggregate_position(lots, current_price=200, fx_now=1.0)
     assert pos["quantity"] == 40
     assert pos["avg_price"] == (10 * 100 + 30 * 200) / 40  # 175
+
+
+def test_build_allocation_groups_by_class_and_adds_cash():
+    positions = [
+        {"asset_class": "주식", "value_krw": 600.0},
+        {"asset_class": "채권", "value_krw": 300.0},
+        {"asset_class": "주식", "value_krw": 100.0},
+    ]
+    total_cash = 200.0
+    total_value = 1200.0  # 1000 종목 + 200 현금
+    alloc = build_allocation(positions, total_cash, total_value)
+    by = {a["asset_class"]: a for a in alloc}
+    assert by["주식"]["value_krw"] == 700.0
+    assert round(by["주식"]["weight_pct"], 4) == round(700/1200*100, 4)
+    assert by["채권"]["value_krw"] == 300.0
+    assert by["현금성"]["value_krw"] == 200.0
+    assert [a["asset_class"] for a in alloc] == ["주식", "채권", "현금성"]
+
+
+def test_build_allocation_null_class_is_기타():
+    alloc = build_allocation([{"asset_class": None, "value_krw": 50.0}], 0.0, 50.0)
+    assert alloc[0]["asset_class"] == "기타"
+    assert alloc[0]["weight_pct"] == 100.0

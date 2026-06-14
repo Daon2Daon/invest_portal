@@ -25,6 +25,21 @@ def aggregate_position(lots: list[dict], current_price: float, fx_now: float) ->
     }
 
 
+def build_allocation(positions: list[dict], total_cash: float, total_value: float) -> list[dict]:
+    """자산군별 평가액·비중을 집계한다. 현금은 '현금성' 자산군으로 더한다.
+    asset_class가 None/빈값이면 '기타'로 묶는다."""
+    sums: dict[str, float] = {}
+    for p in positions:
+        key = p.get("asset_class") or "기타"
+        sums[key] = sums.get(key, 0.0) + p["value_krw"]
+    if total_cash:
+        sums["현금성"] = sums.get("현금성", 0.0) + total_cash
+    out = [{"asset_class": k, "value_krw": v,
+            "weight_pct": (v / total_value * 100) if total_value else 0} for k, v in sums.items()]
+    out.sort(key=lambda x: x["value_krw"], reverse=True)
+    return out
+
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Asset, Holding, CashBalance
@@ -51,6 +66,7 @@ async def get_portfolio(db: AsyncSession) -> dict:
         positions.append({
             "asset_id": asset.asset_id, "ticker": asset.ticker, "name": asset.name,
             "market": asset.market, "currency": asset.currency,
+            "asset_class": asset.asset_class or "기타",
             "current_price": quote.price, "price_status": quote.status, **agg,
         })
 
@@ -74,9 +90,11 @@ async def get_portfolio(db: AsyncSession) -> dict:
 
     total_cost = sum(p["cost_krw"] for p in positions)
     positions_value = total_value - total_cash   # 종목 평가액 합(현금 제외)
+    allocation = build_allocation(positions, total_cash, total_value)
     return {
         "positions": positions,
         "cash": cash,
+        "allocation": allocation,
         "summary": {
             "total_value_krw": total_value,
             "total_cost_krw": total_cost,

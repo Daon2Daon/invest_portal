@@ -3,28 +3,44 @@ import { api } from "../api";
 import type { ResolveResponse } from "../api";
 
 const MARKETS = ["US", "KR", "JP", "CRYPTO"];
+const CURRENCIES = ["KRW", "USD", "JPY"];
 const ASSET_TYPES = [
   { code: "", label: "자동 감지" }, { code: "stock", label: "주식" },
   { code: "etf", label: "ETF" }, { code: "bond", label: "채권 (수동가격)" },
   { code: "commodity", label: "원자재" }, { code: "crypto", label: "가상자산" },
 ];
 
+const emptyLot = { quantity: "", purchase_price: "", purchase_date: "", fee: "", memo: "" };
+const emptyCash = { currency: "KRW", amount: "", label: "" };
+
 export default function Holdings() {
   const [assets, setAssets] = useState<any[]>([]);
   const [holdings, setHoldings] = useState<any[]>([]);
-  // 신규 등록(통합) 입력
+  const [cash, setCash] = useState<any[]>([]);
+  // 신규 보유 등록(통합)
   const [ticker, setTicker] = useState(""); const [market, setMarket] = useState("US");
   const [assetType, setAssetType] = useState("");
   const [preview, setPreview] = useState<ResolveResponse | null>(null);
-  const [lot, setLot] = useState<any>({ quantity: "", purchase_price: "", purchase_date: "", fee: "", memo: "" });
-  // 기존 자산에 분할매수
-  const [existForm, setExistForm] = useState<any>({ asset_id: "", quantity: "", purchase_price: "", purchase_date: "", fee: "", memo: "" });
+  const [lot, setLot] = useState<any>({ ...emptyLot });
+  // 현금 추가
+  const [cashForm, setCashForm] = useState<any>({ ...emptyCash });
+  // 인라인 수정 상태
+  const [editHid, setEditHid] = useState<number | null>(null);
+  const [editH, setEditH] = useState<any>({ ...emptyLot });
+  const [editCid, setEditCid] = useState<number | null>(null);
+  const [editC, setEditC] = useState<any>({ ...emptyCash });
 
-  const load = async () => { setAssets(await api.listAssets()); setHoldings(await api.listHoldings()); };
+  const load = async () => {
+    setAssets(await api.listAssets());
+    setHoldings(await api.listHoldings());
+    setCash(await api.listCash());
+  };
   useEffect(() => { load(); }, []);
 
-  const doResolve = async () => setPreview(await api.resolve(ticker, market, assetType || undefined));
+  const assetById = Object.fromEntries(assets.map((a) => [a.asset_id, a]));
 
+  // --- 보유종목 추가 ---
+  const doResolve = async () => setPreview(await api.resolve(ticker, market, assetType || undefined));
   const addNew = async () => {
     if (!preview?.asset) return;
     await api.createHoldingWithAsset({
@@ -32,101 +48,197 @@ export default function Holdings() {
       quantity: Number(lot.quantity), purchase_price: Number(lot.purchase_price),
       purchase_date: lot.purchase_date || null, fee: Number(lot.fee || 0), memo: lot.memo || null,
     });
-    setPreview(null); setTicker(""); setLot({ quantity: "", purchase_price: "", purchase_date: "", fee: "", memo: "" });
+    setPreview(null); setTicker(""); setLot({ ...emptyLot });
     await load();
   };
 
-  const addExisting = async () => {
-    await api.createHolding({
-      asset_id: Number(existForm.asset_id), quantity: Number(existForm.quantity),
-      purchase_price: Number(existForm.purchase_price), purchase_date: existForm.purchase_date || null,
-      fee: Number(existForm.fee || 0), memo: existForm.memo || null,
-    });
-    setExistForm({ asset_id: "", quantity: "", purchase_price: "", purchase_date: "", fee: "", memo: "" });
+  // --- 현금 추가 ---
+  const addCash = async () => {
+    await api.createCash({ currency: cashForm.currency, amount: Number(cashForm.amount),
+      label: cashForm.label || null });
+    setCashForm({ ...emptyCash });
     await load();
   };
 
-  const remove = async (id: number) => { await api.deleteHolding(id); await load(); };
+  // --- 보유 수정/삭제 ---
+  const startEditH = (h: any) => {
+    setEditHid(h.holding_id);
+    setEditH({ quantity: h.quantity, purchase_price: h.purchase_price,
+      purchase_date: h.purchase_date ?? "", fee: h.fee, memo: h.memo ?? "" });
+  };
+  const saveH = async () => {
+    await api.updateHolding(editHid!, {
+      quantity: Number(editH.quantity), purchase_price: Number(editH.purchase_price),
+      purchase_date: editH.purchase_date || null, fee: Number(editH.fee || 0), memo: editH.memo || null });
+    setEditHid(null); await load();
+  };
+  const removeH = async (id: number) => { await api.deleteHolding(id); await load(); };
+
+  // --- 현금 수정/삭제 ---
+  const startEditC = (c: any) => {
+    setEditCid(c.id);
+    setEditC({ currency: c.currency, amount: c.amount, label: c.label ?? "" });
+  };
+  const saveC = async () => {
+    await api.updateCash(editCid!, { currency: editC.currency, amount: Number(editC.amount),
+      label: editC.label || null });
+    setEditCid(null); await load();
+  };
+  const removeC = async (id: number) => { await api.deleteCash(id); await load(); };
+
+  const inp = "border rounded px-2 py-1";
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-xl font-bold">보유종목 추가</h1>
+    <div className="p-6 space-y-8">
+      {/* ===== 추가 입력 ===== */}
+      <div className="space-y-6">
+        <h1 className="text-xl font-bold">보유 추가</h1>
 
-      {/* 신규: 조회 → 등록 한 흐름 */}
-      <section className="space-y-2">
-        <div className="flex gap-2 items-center flex-wrap">
-          <input className="border rounded px-2 py-1" placeholder="티커 (AAPL, 005930, BTC, GC=F)"
-            value={ticker} onChange={(e) => setTicker(e.target.value)} />
-          <select className="border rounded px-2 py-1" value={market} onChange={(e) => setMarket(e.target.value)}>
-            {MARKETS.map((m) => <option key={m}>{m}</option>)}
-          </select>
-          <select className="border rounded px-2 py-1" value={assetType} onChange={(e) => setAssetType(e.target.value)}>
-            {ASSET_TYPES.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
-          </select>
-          <button onClick={doResolve} className="px-3 py-1 rounded bg-gray-800 text-white">조회</button>
-        </div>
-
-        {preview && (preview.ok && preview.asset ? (
-          <div className="rounded border p-3 bg-green-50 space-y-2">
-            <div><b>{preview.asset.name}</b> · {preview.asset.currency} · {preview.asset.asset_type} · 현재가 {preview.asset.current_price ?? "—"}</div>
-            <div className="flex gap-2 flex-wrap">
-              <input className="border rounded px-2 py-1 w-24" placeholder="수량"
-                value={lot.quantity} onChange={(e) => setLot({ ...lot, quantity: e.target.value })} />
-              <input className="border rounded px-2 py-1 w-32" placeholder={`매입단가 (${preview.asset.currency})`}
-                value={lot.purchase_price} onChange={(e) => setLot({ ...lot, purchase_price: e.target.value })} />
-              <input type="date" className="border rounded px-2 py-1" title="매입일(선택)"
-                value={lot.purchase_date} onChange={(e) => setLot({ ...lot, purchase_date: e.target.value })} />
-              <input className="border rounded px-2 py-1 w-24" placeholder="수수료"
-                value={lot.fee} onChange={(e) => setLot({ ...lot, fee: e.target.value })} />
-              <input className="border rounded px-2 py-1" placeholder="메모"
-                value={lot.memo} onChange={(e) => setLot({ ...lot, memo: e.target.value })} />
-              <button onClick={addNew} className="px-3 py-1 rounded bg-blue-600 text-white">보유 추가</button>
+        {/* 보유종목 */}
+        <section className="space-y-2">
+          <h2 className="font-semibold text-gray-700">종목</h2>
+          <div className="flex gap-2 items-center flex-wrap">
+            <input className={inp} placeholder="티커 (AAPL, 005930, BTC, GC=F)"
+              value={ticker} onChange={(e) => setTicker(e.target.value)} />
+            <select className={inp} value={market} onChange={(e) => setMarket(e.target.value)}>
+              {MARKETS.map((m) => <option key={m}>{m}</option>)}
+            </select>
+            <select className={inp} value={assetType} onChange={(e) => setAssetType(e.target.value)}>
+              {ASSET_TYPES.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+            </select>
+            <button onClick={doResolve} className="px-3 py-1 rounded bg-gray-800 text-white">조회</button>
+          </div>
+          {preview && (preview.ok && preview.asset ? (
+            <div className="rounded border p-3 bg-green-50 space-y-2">
+              <div><b>{preview.asset.name}</b> · {preview.asset.currency} · {preview.asset.asset_type} · 현재가 {preview.asset.current_price ?? "—"}</div>
+              <div className="flex gap-2 flex-wrap">
+                <input className={`${inp} w-24`} placeholder="수량"
+                  value={lot.quantity} onChange={(e) => setLot({ ...lot, quantity: e.target.value })} />
+                <input className={`${inp} w-32`} placeholder={`매입단가 (${preview.asset.currency})`}
+                  value={lot.purchase_price} onChange={(e) => setLot({ ...lot, purchase_price: e.target.value })} />
+                <input type="date" className={inp} title="매입일(선택)"
+                  value={lot.purchase_date} onChange={(e) => setLot({ ...lot, purchase_date: e.target.value })} />
+                <input className={`${inp} w-24`} placeholder="수수료"
+                  value={lot.fee} onChange={(e) => setLot({ ...lot, fee: e.target.value })} />
+                <input className={inp} placeholder="메모"
+                  value={lot.memo} onChange={(e) => setLot({ ...lot, memo: e.target.value })} />
+                <button onClick={addNew} className="px-3 py-1 rounded bg-blue-600 text-white">추가</button>
+              </div>
+              <div className="text-xs text-gray-500">같은 티커를 다시 추가하면 기존 자산에 분할매수로 쌓입니다.</div>
             </div>
-          </div>
-        ) : (
-          <div className="rounded border p-3 bg-amber-50">
-            <div>조회 실패 (시도: {preview.tried.join(", ")})</div>
-            <div className="text-sm text-gray-600">{preview.suggestion}</div>
-          </div>
-        ))}
-      </section>
+          ) : (
+            <div className="rounded border p-3 bg-amber-50">
+              <div>조회 실패 (시도: {preview.tried.join(", ")})</div>
+              <div className="text-sm text-gray-600">{preview.suggestion}</div>
+            </div>
+          ))}
+        </section>
 
-      {/* 기존 자산에 분할매수 */}
-      <section className="space-y-2">
-        <h2 className="font-semibold">기존 자산에 추가 매수</h2>
-        <div className="flex gap-2 flex-wrap">
-          <select className="border rounded px-2 py-1" value={existForm.asset_id}
-            onChange={(e) => setExistForm({ ...existForm, asset_id: e.target.value })}>
-            <option value="">자산 선택</option>
-            {assets.map((a) => <option key={a.asset_id} value={a.asset_id}>{a.ticker}·{a.market} {a.name}</option>)}
-          </select>
-          <input className="border rounded px-2 py-1 w-24" placeholder="수량"
-            value={existForm.quantity} onChange={(e) => setExistForm({ ...existForm, quantity: e.target.value })} />
-          <input className="border rounded px-2 py-1 w-32" placeholder="매입단가"
-            value={existForm.purchase_price} onChange={(e) => setExistForm({ ...existForm, purchase_price: e.target.value })} />
-          <input type="date" className="border rounded px-2 py-1" title="매입일(선택)"
-            value={existForm.purchase_date} onChange={(e) => setExistForm({ ...existForm, purchase_date: e.target.value })} />
-          <input className="border rounded px-2 py-1 w-24" placeholder="수수료"
-            value={existForm.fee} onChange={(e) => setExistForm({ ...existForm, fee: e.target.value })} />
-          <button onClick={addExisting} className="px-3 py-1 rounded bg-blue-600 text-white">추가</button>
-        </div>
-      </section>
+        {/* 현금 */}
+        <section className="space-y-2">
+          <h2 className="font-semibold text-gray-700">현금</h2>
+          <div className="flex gap-2 flex-wrap items-center">
+            <select className={inp} value={cashForm.currency}
+              onChange={(e) => setCashForm({ ...cashForm, currency: e.target.value })}>
+              {CURRENCIES.map((c) => <option key={c}>{c}</option>)}
+            </select>
+            <input className={`${inp} w-40`} placeholder="금액"
+              value={cashForm.amount} onChange={(e) => setCashForm({ ...cashForm, amount: e.target.value })} />
+            <input className={inp} placeholder="라벨(예: 증권사 예수금)"
+              value={cashForm.label} onChange={(e) => setCashForm({ ...cashForm, label: e.target.value })} />
+            <button onClick={addCash} className="px-3 py-1 rounded bg-blue-600 text-white">추가</button>
+          </div>
+        </section>
+      </div>
 
-      {/* 보유 목록 */}
+      {/* ===== 보유 목록 ===== */}
       <section>
-        <h2 className="font-semibold">보유 목록</h2>
-        <table className="w-full text-sm mt-2">
+        <h2 className="font-semibold mb-2">보유 종목</h2>
+        <table className="w-full text-sm">
           <thead><tr className="border-b text-left text-gray-500">
-            <th className="py-2">자산ID</th><th>매입일</th><th>수량</th><th>단가</th><th></th>
+            <th className="py-2">종목</th><th>매입일</th><th>수량</th><th>단가</th><th>수수료</th><th>메모</th><th></th>
           </tr></thead>
           <tbody>
-            {holdings.map((h) => (
-              <tr key={h.holding_id} className="border-b">
-                <td className="py-2">{h.asset_id}</td><td>{h.purchase_date ?? "—"}</td>
-                <td>{h.quantity}</td><td>{h.purchase_price}</td>
-                <td><button onClick={() => remove(h.holding_id)} className="text-red-600">삭제</button></td>
-              </tr>
-            ))}
+            {holdings.map((h) => {
+              const a = assetById[h.asset_id];
+              const editing = editHid === h.holding_id;
+              return (
+                <tr key={h.holding_id} className="border-b">
+                  <td className="py-2">{a ? `${a.name} (${a.ticker}·${a.market})` : `#${h.asset_id}`}</td>
+                  {editing ? (
+                    <>
+                      <td><input type="date" className={`${inp} w-36`} value={editH.purchase_date}
+                        onChange={(e) => setEditH({ ...editH, purchase_date: e.target.value })} /></td>
+                      <td><input className={`${inp} w-20`} value={editH.quantity}
+                        onChange={(e) => setEditH({ ...editH, quantity: e.target.value })} /></td>
+                      <td><input className={`${inp} w-24`} value={editH.purchase_price}
+                        onChange={(e) => setEditH({ ...editH, purchase_price: e.target.value })} /></td>
+                      <td><input className={`${inp} w-20`} value={editH.fee}
+                        onChange={(e) => setEditH({ ...editH, fee: e.target.value })} /></td>
+                      <td><input className={`${inp} w-28`} value={editH.memo}
+                        onChange={(e) => setEditH({ ...editH, memo: e.target.value })} /></td>
+                      <td className="whitespace-nowrap">
+                        <button onClick={saveH} className="text-blue-600 mr-2">저장</button>
+                        <button onClick={() => setEditHid(null)} className="text-gray-500">취소</button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{h.purchase_date ?? "—"}</td><td>{h.quantity}</td><td>{h.purchase_price}</td>
+                      <td>{h.fee}</td><td>{h.memo ?? "—"}</td>
+                      <td className="whitespace-nowrap">
+                        <button onClick={() => startEditH(h)} className="text-gray-700 mr-2">수정</button>
+                        <button onClick={() => removeH(h.holding_id)} className="text-red-600">삭제</button>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </section>
+
+      {/* ===== 현금 목록 ===== */}
+      <section>
+        <h2 className="font-semibold mb-2">현금</h2>
+        <table className="w-full text-sm">
+          <thead><tr className="border-b text-left text-gray-500">
+            <th className="py-2">통화</th><th>금액</th><th>라벨</th><th></th>
+          </tr></thead>
+          <tbody>
+            {cash.map((c) => {
+              const editing = editCid === c.id;
+              return (
+                <tr key={c.id} className="border-b">
+                  {editing ? (
+                    <>
+                      <td className="py-2"><select className={inp} value={editC.currency}
+                        onChange={(e) => setEditC({ ...editC, currency: e.target.value })}>
+                        {CURRENCIES.map((x) => <option key={x}>{x}</option>)}
+                      </select></td>
+                      <td><input className={`${inp} w-32`} value={editC.amount}
+                        onChange={(e) => setEditC({ ...editC, amount: e.target.value })} /></td>
+                      <td><input className={inp} value={editC.label}
+                        onChange={(e) => setEditC({ ...editC, label: e.target.value })} /></td>
+                      <td className="whitespace-nowrap">
+                        <button onClick={saveC} className="text-blue-600 mr-2">저장</button>
+                        <button onClick={() => setEditCid(null)} className="text-gray-500">취소</button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-2">{c.currency}</td><td>{Number(c.amount).toLocaleString()}</td>
+                      <td>{c.label ?? "—"}</td>
+                      <td className="whitespace-nowrap">
+                        <button onClick={() => startEditC(c)} className="text-gray-700 mr-2">수정</button>
+                        <button onClick={() => removeC(c.id)} className="text-red-600">삭제</button>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </section>

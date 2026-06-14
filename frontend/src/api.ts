@@ -13,10 +13,10 @@ async function j<T>(p: string, init?: RequestInit): Promise<T> {
 export const api = {
   resolve: (ticker: string, market: string, asset_type?: string) =>
     j<ResolveResponse>("/api/assets/resolve", { method: "POST", body: JSON.stringify({ ticker, market, asset_type }) }),
-  createAsset: (a: any) => j("/api/assets", { method: "POST", body: JSON.stringify(a) }),
   listAssets: () => j<any[]>("/api/assets"),
-  createHolding: (h: any) => j("/api/holdings", { method: "POST", body: JSON.stringify(h) }),
   listHoldings: () => j<any[]>("/api/holdings"),
+  updateHolding: (id: number, h: any) =>
+    j(`/api/holdings/${id}`, { method: "PUT", body: JSON.stringify(h) }),
   deleteHolding: (id: number) => j(`/api/holdings/${id}`, { method: "DELETE" }),
   portfolio: () => j<PortfolioOut>("/api/portfolio"),
   refresh: () => j<PortfolioOut>("/api/portfolio/refresh", { method: "POST" }),

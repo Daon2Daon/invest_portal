@@ -23,7 +23,7 @@ export default function Dashboard() {
           {loading ? "갱신 중…" : "새로고침"}
         </button>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="rounded border p-4">
           <div className="text-sm text-gray-500">총자산 (KRW)</div>
           <div className="text-2xl font-semibold">₩{krw(s.total_value_krw)}</div>
@@ -33,6 +33,10 @@ export default function Dashboard() {
           <div className={`text-2xl font-semibold ${s.total_profit_loss_krw >= 0 ? "text-red-600" : "text-blue-600"}`}>
             ₩{krw(s.total_profit_loss_krw)} ({s.total_profit_loss_pct.toFixed(2)}%)
           </div>
+        </div>
+        <div className="rounded border p-4">
+          <div className="text-sm text-gray-500">현금 (KRW)</div>
+          <div className="text-2xl font-semibold">₩{krw(s.total_cash_krw)}</div>
         </div>
       </div>
       <table className="w-full text-sm border-collapse">
@@ -55,6 +59,24 @@ export default function Dashboard() {
           ))}
         </tbody>
       </table>
+      {data.cash.length > 0 && (
+        <div>
+          <h2 className="font-semibold mb-2">현금</h2>
+          <table className="w-full text-sm border-collapse">
+            <thead><tr className="border-b text-left text-gray-500">
+              <th className="py-2">통화</th><th>금액</th><th>라벨</th><th>평가액(KRW)</th><th>비중</th>
+            </tr></thead>
+            <tbody>
+              {data.cash.map((c) => (
+                <tr key={c.id} className="border-b">
+                  <td className="py-2">{c.currency}</td><td>{c.amount.toLocaleString()}</td>
+                  <td>{c.label ?? "—"}</td><td>₩{krw(c.value_krw)}</td><td>{c.weight_pct.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

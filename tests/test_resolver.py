@@ -55,3 +55,31 @@ def test_resolver_reports_failure_with_tried_list():
     assert out.ok is False
     assert out.tried == ["pykrx", "yfinance"]
     assert "manual" in out.suggestion.lower()
+
+
+from app.services.market.asset_class import default_asset_class
+
+
+def test_default_asset_class_mapping():
+    assert default_asset_class("stock") == "주식"
+    assert default_asset_class("etf") == "주식"
+    assert default_asset_class("bond") == "채권"
+    assert default_asset_class("crypto") == "가상자산"
+    assert default_asset_class("commodity") == "원자재"
+    assert default_asset_class("etn") == "기타"
+    assert default_asset_class(None) == "기타"
+    assert default_asset_class("unknown") == "기타"
+
+
+def test_resolver_fills_asset_class_from_type():
+    yf = MagicMock(); yf.resolve.return_value = _ra(asset_type="stock")
+    out = AssetResolver(yfinance=yf, pykrx=MagicMock(), manual=MagicMock()).resolve("AAPL", "US")
+    assert out.asset.asset_class == "주식"
+
+
+def test_resolver_bond_hint_fills_asset_class_채권():
+    manual = MagicMock()
+    manual.resolve.return_value = _ra(asset_type="bond", data_source="manual", current_price=None)
+    out = AssetResolver(yfinance=MagicMock(), pykrx=MagicMock(), manual=manual).resolve("KR123", "KR", asset_type_hint="bond")
+    assert out.ok is True
+    assert out.asset.asset_class == "채권"

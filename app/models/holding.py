@@ -9,10 +9,9 @@ class Holding(Base):
 
     holding_id: Mapped[int] = mapped_column(primary_key=True)
     asset_id: Mapped[int] = mapped_column(ForeignKey("assets.asset_id", ondelete="CASCADE"), nullable=False)
-    purchase_date: Mapped[date] = mapped_column(Date, nullable=False)
+    purchase_date: Mapped[date | None] = mapped_column(Date)
     quantity: Mapped[float] = mapped_column(Numeric, nullable=False)
     purchase_price: Mapped[float] = mapped_column(Numeric, nullable=False)
-    purchase_fx_rate: Mapped[float | None] = mapped_column(Numeric)
     fee: Mapped[float] = mapped_column(Numeric, default=0)
     memo: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -36,12 +36,25 @@
 - 참고: 같은 티커 재추가(분할매수)는 자산의 asset_class를 덮어쓰지 않음(분류 보존). 자산군 변경은 PUT으로.
 - 후속 후보: 다중 태그, 자산군별 목표비중·리밸런싱, 파이차트 시각화.
 
-## 2단계: chartbot + 텔레그램 — **미착수**
-시작 시 `superpowers:brainstorming`으로 새 spec 작성. 핵심:
-- chartbot 포팅: my-assistant `app/services/bots/chart_bot.py`(4패널 캔들+RSI+MACD+거래량)·`chart_analyzer.py`(AI 해석)의 검증된 로직만 선별 참조해 새로 작성.
-- 1단계에 둔 `PriceProvider.history(asset, start, end)` 인터페이스를 차트 OHLCV 소스로 재사용.
-- 텔레그램 발송: ytdb `app/services/`의 텔레그램 패턴 참조. 설정은 `app_settings`의 `notification` 카테고리(봇 토큰은 Fernet secret).
-- 스케줄 리포트: APScheduler 도입(ytdb 참조), 잡스토어는 메모리 또는 PG.
+## 2단계: chartbot + 텔레그램
+
+### 2a+2b: 차트 생성 + 텔레그램 발송 — **구현 완료 (main 병합됨, 2026-06-14)**
+- spec: `docs/superpowers/specs/2026-06-14-chart-generation-telegram-design.md`
+- plan: `docs/superpowers/plans/2026-06-14-chart-generation-telegram.md`
+- 내용: provider `history()` + data_source 디스패치(`history_service`), matplotlib 4패널 TA 차트(일봉/주봉 온더플라이 PNG, `chart_service`), `GET /api/charts/{id}` + "차트" 메뉴, 텔레그램 설정(봇토큰 Fernet, `app_settings.notification`)+`telegram_service`+`POST /api/charts/{id}/send-telegram`, "설정" 메뉴(텔레그램 섹션), Dockerfile `fonts-nanum`.
+- 상태: 단위테스트 37 passed/4 skipped, 빌드 통과, 실DB 스모크(005930/112610 일봉·주봉 PNG 200, send-telegram 토큰미설정 409). 종합 리뷰 Critical/Important 0(딜리버리 신뢰성 fix 2건 반영: 사진 사이 sleep, 주봉 onError).
+- KR ETF는 data_source=yfinance(.KS)라 history도 yfinance, KR 주식은 pykrx. manual 자산은 차트 불가(422).
+- **노트(저위험, 미적용):** `registry.for_source`가 미지 data_source에 KeyError→500(앱 경로상 발생 불가, get_quote와 공유되는 기존 패턴). 차후 방어코드 추가 가능.
+- 메뉴: 대시보드·보유·차트·설정.
+
+### 2c: AI 차트 분석 — **미착수**
+- litellm 비전(Gemini 등)으로 차트 PNG 분석 → 코멘트 텍스트 → 텔레그램 발송. my-assistant `chart_analyzer.py` + ytdb `llm_client.py` 참조.
+- 설정: "설정" 페이지에 AI 섹션 추가(`app_settings.ai_gateway`: base_url/api_key(secret)/model/prompt).
+
+### 2d: 스케줄 자동 발송 — **미착수**
+- APScheduler(ytdb `scheduler.py` 참조). 종목별 발송시각·요일 설정 → 차트(+2c 분석) 자동 발송. 잡스토어 메모리 또는 PG.
+
+## 3단계: AI 리포트 + 투자저널 + 위험신호 — **미착수**
 
 ## 3단계: AI 리포트 + 투자저널 + 위험신호 — **미착수**
 - AI 포트폴리오 분석/리포트: ytdb의 분석 파이프라인·litellm 게이트웨이 패턴 참조. 설정은 `app_settings`의 `ai_gateway` 카테고리.

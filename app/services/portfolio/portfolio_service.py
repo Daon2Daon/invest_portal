@@ -1,24 +1,26 @@
 def aggregate_position(lots: list[dict], current_price: float, fx_now: float) -> dict:
-    """동일 자산의 lot들을 집계해 KRW 기준 손익을 계산한다.
+    """동일 자산의 lot들을 자산 통화 기준으로 집계하고 현재 환율(fx_now)로 KRW 환산한다.
 
-    cost_krw  = Σ quantity * purchase_price * purchase_fx_rate (+fee)
-    value_krw = Σ quantity * current_price * fx_now
+    매수시점 환율은 쓰지 않는다(해외 자산 과거가치 산정 불필요).
+    cost_native  = Σ (quantity * purchase_price) + fee
+    value_native = Σ quantity * current_price
+    *_krw        = *_native * fx_now
     """
     total_qty = sum(l["quantity"] for l in lots)
-    cost_krw = sum(
-        l["quantity"] * l["purchase_price"] * (l["purchase_fx_rate"] or fx_now) + (l.get("fee") or 0)
-        for l in lots
-    )
+    cost_native = sum(l["quantity"] * l["purchase_price"] + (l.get("fee") or 0) for l in lots)
+    value_native = total_qty * current_price
     avg_price = (sum(l["quantity"] * l["purchase_price"] for l in lots) / total_qty) if total_qty else 0
-    value_krw = total_qty * current_price * fx_now
-    pl = value_krw - cost_krw
-    pl_pct = (pl / cost_krw * 100) if cost_krw else 0
+    pl_native = value_native - cost_native
+    pl_pct = (pl_native / cost_native * 100) if cost_native else 0
     return {
         "quantity": total_qty,
         "avg_price": avg_price,
-        "cost_krw": cost_krw,
-        "value_krw": value_krw,
-        "profit_loss_krw": pl,
+        "cost_native": cost_native,
+        "value_native": value_native,
+        "profit_loss_native": pl_native,
+        "cost_krw": cost_native * fx_now,
+        "value_krw": value_native * fx_now,
+        "profit_loss_krw": pl_native * fx_now,
         "profit_loss_pct": pl_pct,
     }
 

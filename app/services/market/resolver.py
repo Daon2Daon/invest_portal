@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from app.services.market.types import ResolvedAsset
 from app.services.market.registry import registry
+from app.services.market.asset_class import default_asset_class
 
 # 시장별 해석 체인 (provider 속성명 순서)
 _CHAINS = {
@@ -31,6 +32,8 @@ class AssetResolver:
         # 채권/수동 요청은 바로 manual.
         if asset_type_hint == "bond":
             asset = self.providers["manual"].resolve(ticker, market, asset_type_hint)
+            if asset is not None:
+                asset.asset_class = default_asset_class(asset.asset_type)
             return ResolveResult(ok=True, asset=asset, tried=["manual"])
         tried: list[str] = []
         for name in _CHAINS.get(market, ["yfinance"]):
@@ -41,6 +44,7 @@ class AssetResolver:
                 # (시세·통화·이름·fetch_symbol은 데이터 소스가 채운 값을 유지)
                 if asset_type_hint:
                     asset.asset_type = asset_type_hint
+                asset.asset_class = default_asset_class(asset.asset_type)
                 return ResolveResult(ok=True, asset=asset, tried=tried)
         return ResolveResult(
             ok=False, tried=tried,

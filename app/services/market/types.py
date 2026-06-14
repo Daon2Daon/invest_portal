@@ -13,6 +13,7 @@ class ResolvedAsset:
     fetch_symbol: str
     current_price: float | None = None
     name_en: str | None = None
+    asset_class: str | None = None
 
 
 @dataclass

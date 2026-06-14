@@ -17,6 +17,7 @@ class Asset(Base):
     currency: Mapped[str] = mapped_column(String, nullable=False)
     data_source: Mapped[str] = mapped_column(String, nullable=False)
     fetch_symbol: Mapped[str] = mapped_column(String, nullable=False)
+    asset_class: Mapped[str | None] = mapped_column(String)
     manual_price: Mapped[float | None] = mapped_column(Numeric)
     manual_price_currency: Mapped[str | None] = mapped_column(String)
     manual_price_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

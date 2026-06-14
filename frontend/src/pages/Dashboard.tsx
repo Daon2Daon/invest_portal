@@ -41,13 +41,14 @@ export default function Dashboard() {
       </div>
       <table className="w-full text-sm border-collapse">
         <thead><tr className="border-b text-left text-gray-500">
-          <th className="py-2">종목</th><th>수량</th><th>평단</th><th>현재가</th>
+          <th className="py-2">종목</th><th>자산군</th><th>수량</th><th>평단</th><th>현재가</th>
           <th>평가액(KRW)</th><th>손익</th><th>비중</th><th></th>
         </tr></thead>
         <tbody>
           {data.positions.map((p) => (
             <tr key={p.asset_id} className="border-b">
               <td className="py-2">{p.name} <span className="text-gray-400">{p.ticker}·{p.market}</span></td>
+              <td>{p.asset_class}</td>
               <td>{p.quantity}</td><td>{p.avg_price.toLocaleString()}</td>
               <td>{p.current_price.toLocaleString()}</td><td>₩{krw(p.value_krw)}</td>
               <td className={p.profit_loss_krw >= 0 ? "text-red-600" : "text-blue-600"}>
@@ -71,6 +72,23 @@ export default function Dashboard() {
                 <tr key={c.id} className="border-b">
                   <td className="py-2">{c.currency}</td><td>{c.amount.toLocaleString()}</td>
                   <td>{c.label ?? "—"}</td><td>₩{krw(c.value_krw)}</td><td>{c.weight_pct.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {data.allocation.length > 0 && (
+        <div>
+          <h2 className="font-semibold mb-2">자산군별 비중</h2>
+          <table className="w-full text-sm border-collapse">
+            <thead><tr className="border-b text-left text-gray-500">
+              <th className="py-2">자산군</th><th>평가액(KRW)</th><th>비중</th>
+            </tr></thead>
+            <tbody>
+              {data.allocation.map((a) => (
+                <tr key={a.asset_class} className="border-b">
+                  <td className="py-2">{a.asset_class}</td><td>₩{krw(a.value_krw)}</td><td>{a.weight_pct.toFixed(1)}%</td>
                 </tr>
               ))}
             </tbody>

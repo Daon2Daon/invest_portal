@@ -17,6 +17,7 @@ class ResolvedAssetOut(BaseModel):
     fetch_symbol: str
     current_price: float | None = None
     name_en: str | None = None
+    asset_class: str | None = None
 
 
 class ResolveResponse(BaseModel):

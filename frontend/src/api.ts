@@ -1,6 +1,7 @@
 // 빈 문자열 = 같은 오리진. 프로덕션(Docker)에선 FastAPI가 SPA·API를 함께 서빙하고,
 // dev에선 Vite 프록시(/api → :8000)가 처리한다.
 const BASE = "";
+export const ASSET_CLASSES = ["주식", "채권", "현금성", "원자재", "가상자산", "대체투자", "기타"];
 
 async function j<T>(p: string, init?: RequestInit): Promise<T> {
   const r = await fetch(BASE + p, {
@@ -17,6 +18,8 @@ export const api = {
   listHoldings: () => j<any[]>("/api/holdings"),
   updateHolding: (id: number, h: any) =>
     j(`/api/holdings/${id}`, { method: "PUT", body: JSON.stringify(h) }),
+  updateAsset: (id: number, a: any) =>
+    j(`/api/assets/${id}`, { method: "PUT", body: JSON.stringify(a) }),
   deleteHolding: (id: number) => j(`/api/holdings/${id}`, { method: "DELETE" }),
   portfolio: () => j<PortfolioOut>("/api/portfolio"),
   refresh: () => j<PortfolioOut>("/api/portfolio/refresh", { method: "POST" }),
@@ -37,6 +40,7 @@ export interface ResolveResponse {
 }
 export interface Position {
   asset_id: number; ticker: string; name: string; market: string; currency: string;
+  asset_class: string;
   quantity: number; avg_price: number; current_price: number;
   cost_native: number; value_native: number; profit_loss_native: number;
   cost_krw: number; value_krw: number; profit_loss_krw: number; profit_loss_pct: number;
@@ -46,9 +50,13 @@ export interface CashPosition {
   id: number; currency: string; amount: number; label: string | null;
   value_krw: number; weight_pct: number;
 }
+export interface AllocationSlice {
+  asset_class: string; value_krw: number; weight_pct: number;
+}
 export interface PortfolioOut {
   positions: Position[];
   cash: CashPosition[];
+  allocation: AllocationSlice[];
   summary: { total_value_krw: number; total_cost_krw: number;
              total_profit_loss_krw: number; total_profit_loss_pct: number; total_cash_krw: number };
 }

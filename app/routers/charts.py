@@ -9,6 +9,8 @@ from app.db import get_db
 from app.models import Asset
 from app.services.market.history_service import get_history
 from app.services.chart.chart_service import generate_ta_chart, to_weekly
+from app.services.notification import telegram_service
+from app.services.market.quote_service import get_quote
 
 router = APIRouter(prefix="/api/charts", tags=["charts"])
 
@@ -37,3 +39,22 @@ async def _build_png(db: AsyncSession, asset_id: int, period: str) -> bytes:
 async def chart(asset_id: int, period: str = Query("daily"), db: AsyncSession = Depends(get_db)):
     png = await _build_png(db, asset_id, period)
     return StreamingResponse(io.BytesIO(png), media_type="image/png")
+
+
+@router.post("/{asset_id}/send-telegram")
+async def send_telegram(asset_id: int, db: AsyncSession = Depends(get_db)):
+    asset = await db.get(Asset, asset_id)
+    if asset is None:
+        raise HTTPException(404, "asset not found")
+    quote = await get_quote(asset)
+    caption = f"<b>{asset.name}</b> ({asset.ticker}·{asset.market})\n현재가: {quote.price:,} {asset.currency}"
+    sent = 0
+    try:
+        for period in ("daily", "weekly"):
+            png = await _build_png(db, asset_id, period)
+            cap = f"{caption}\n[{period.upper()}]"
+            if await telegram_service.send_photo(db, png, cap):
+                sent += 1
+    except telegram_service.TelegramNotConfigured as e:
+        raise HTTPException(409, str(e))
+    return {"sent": sent, "ok": sent > 0}

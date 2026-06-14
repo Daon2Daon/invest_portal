@@ -14,6 +14,16 @@
   - 통합테스트 재실행: `SCHEMA_NAME=invest_test TEST_DATABASE_URL='postgresql+asyncpg://ai_agent:mook123!@100.114.126.67:5432/agent_db' .venv/bin/pytest -q` (격리 스키마, 운영 invest 무손상).
   - 실행: 백엔드 `.venv/bin/uvicorn app.main:app`, 프론트 `cd frontend && npm run dev`(localhost:5173).
 - 향후 폴리시(리뷰에서 minor로 분류, 미적용): manual_price_currency 환산 처리, 라우트 response_model 보강, holdings.asset_id 인덱스, CORS config화.
+- Docker: 단일 컨테이너(FastAPI가 빌드된 React SPA를 /static/ui로 same-origin 서빙), `Dockerfile`·`docker-compose.yml`(로컬)·`portainer-stack.yml`(프로덕션)·`.dockerignore`. 외부 공유 DB 사용. 이미지 빌드+컨테이너 실행 검증 완료.
+
+## 1.5단계: 현금 자산군 + 보유종목 등록 정비 — **구현 완료 (main 병합됨, 2026-06-14)**
+- spec: `docs/superpowers/specs/2026-06-14-cash-and-holdings-refinements-design.md`
+- plan: `docs/superpowers/plans/2026-06-14-cash-and-holdings-refinements.md`
+- 내용: (1) 현금 자산군(`cash_balances` 테이블, /api/cash CRUD, 포트폴리오 총자산·비중 포함), (2) 보유종목 등록 통합(`POST /api/holdings/with-asset` = 자산 upsert+보유 한 번에, 단일 폼), (3) 매입날짜 선택 입력(nullable), (4) 환율 단순화(`purchase_fx_rate` 제거 — 원가도 현재환율로 환산, 환차익 미분리; 손익은 자산통화 기준).
+- 상태: 단위테스트 20 passed/4 skipped, 프론트 빌드 통과, 실DB 엔드투엔드 검증(현금 비중 합 ~100%, with-asset 생성, 날짜 None). 최종 리뷰 Critical/Important 0건.
+- DB 마이그레이션: 사용자 실데이터(005930·112610 보유 2건)가 있어 drop 대신 **ALTER in-place**(purchase_fx_rate 컬럼 제거 + purchase_date DROP NOT NULL)로 데이터 보존. `cash_balances`는 부팅 시 자동 생성.
+- **미해결 UX(다음 UI 폴리시 패스):** 현금 수정(PUT) 폼 UI 없음(백엔드는 완비), 보유 목록이 asset_id만 표시(자산명 표시로 개선 가능).
+- **주의(별도 점검):** pykrx 시세 정확도 — 005930(삼성전자) 현재가가 비현실적 값(322,500)으로 조회됨. phase-1부터 있던 기존 이슈로 포트폴리오 평가에 영향. 별도 조사 필요.
 
 ## 2단계: chartbot + 텔레그램 — **미착수**
 시작 시 `superpowers:brainstorming`으로 새 spec 작성. 핵심:

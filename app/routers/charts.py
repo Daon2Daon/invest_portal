@@ -50,7 +50,9 @@ async def send_telegram(asset_id: int, db: AsyncSession = Depends(get_db)):
     caption = f"<b>{asset.name}</b> ({asset.ticker}·{asset.market})\n현재가: {quote.price:,} {asset.currency}"
     sent = 0
     try:
-        for period in ("daily", "weekly"):
+        for i, period in enumerate(("daily", "weekly")):
+            if i > 0:
+                await asyncio.sleep(1)   # 텔레그램 연속 사진 발송 rate limit(429) 회피
             png = await _build_png(db, asset_id, period)
             cap = f"{caption}\n[{period.upper()}]"
             if await telegram_service.send_photo(db, png, cap):

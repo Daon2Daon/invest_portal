@@ -42,7 +42,8 @@ export default function Charts() {
           </div>
           <div>
             <h2 className="font-semibold mb-1">주봉</h2>
-            <img src={src("weekly")} alt="weekly chart" className="max-w-full border rounded" />
+            <img src={src("weekly")} alt="weekly chart" className="max-w-full border rounded"
+              onError={(e) => ((e.target as HTMLImageElement).alt = "차트를 가져올 수 없습니다(수동/이력없음 자산일 수 있음)")} />
           </div>
         </div>
       )}

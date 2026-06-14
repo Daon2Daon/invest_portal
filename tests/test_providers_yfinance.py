@@ -58,3 +58,46 @@ def test_resolve_returns_none_on_empty_history(mock_ticker):
 
     p = YFinanceProvider()
     assert p.resolve("NOPE", "US") is None
+
+
+@patch("app.services.market.yfinance_provider.yf.Ticker")
+def test_resolve_kr_uses_ks_suffix(mock_ticker):
+    # KR 폴백: {ticker}.KS 를 먼저 시도해 해석(통화 KRW). KR ETF가 pykrx 실패 시 yfinance로 잡힘.
+    def fake(sym):
+        inst = MagicMock()
+        if sym == "385560.KS":
+            inst.history.return_value = pd.DataFrame({"Close": [100.0, 55245.0], "Volume": [1, 2]})
+            inst.info = {"quoteType": "ETF", "longName": "RISE KIS Bond ETF", "currency": "KRW"}
+        else:
+            inst.history.return_value = pd.DataFrame()
+            inst.info = {}
+        return inst
+    mock_ticker.side_effect = fake
+
+    r = YFinanceProvider().resolve("385560", "KR")
+    assert r is not None
+    assert r.fetch_symbol == "385560.KS"
+    assert r.market == "KR"
+    assert r.currency == "KRW"
+    assert r.asset_type == "etf"
+    assert r.current_price == 55245.0
+
+
+@patch("app.services.market.yfinance_provider.yf.Ticker")
+def test_resolve_kr_falls_back_to_kq(mock_ticker):
+    # .KS 에 데이터가 없으면 .KQ 를 시도한다.
+    def fake(sym):
+        inst = MagicMock()
+        if sym == "123456.KQ":
+            inst.history.return_value = pd.DataFrame({"Close": [100.0, 200.0], "Volume": [1, 2]})
+            inst.info = {"quoteType": "EQUITY", "shortName": "코스닥종목", "currency": "KRW"}
+        else:
+            inst.history.return_value = pd.DataFrame()
+            inst.info = {}
+        return inst
+    mock_ticker.side_effect = fake
+
+    r = YFinanceProvider().resolve("123456", "KR")
+    assert r is not None
+    assert r.fetch_symbol == "123456.KQ"
+    assert r.currency == "KRW"

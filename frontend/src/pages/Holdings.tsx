@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { api, ASSET_CLASSES } from "../api";
 import type { ResolveResponse } from "../api";
 
 const MARKETS = ["US", "KR", "JP", "CRYPTO"];
@@ -10,21 +10,18 @@ const ASSET_TYPES = [
   { code: "commodity", label: "원자재" }, { code: "crypto", label: "가상자산" },
 ];
 
-const emptyLot = { quantity: "", purchase_price: "", purchase_date: "", fee: "", memo: "" };
+const emptyLot = { quantity: "", purchase_price: "", purchase_date: "", fee: "", memo: "", asset_class: "" };
 const emptyCash = { currency: "KRW", amount: "", label: "" };
 
 export default function Holdings() {
   const [assets, setAssets] = useState<any[]>([]);
   const [holdings, setHoldings] = useState<any[]>([]);
   const [cash, setCash] = useState<any[]>([]);
-  // 신규 보유 등록(통합)
   const [ticker, setTicker] = useState(""); const [market, setMarket] = useState("US");
   const [assetType, setAssetType] = useState("");
   const [preview, setPreview] = useState<ResolveResponse | null>(null);
   const [lot, setLot] = useState<any>({ ...emptyLot });
-  // 현금 추가
   const [cashForm, setCashForm] = useState<any>({ ...emptyCash });
-  // 인라인 수정 상태
   const [editHid, setEditHid] = useState<number | null>(null);
   const [editH, setEditH] = useState<any>({ ...emptyLot });
   const [editCid, setEditCid] = useState<number | null>(null);
@@ -39,12 +36,15 @@ export default function Holdings() {
 
   const assetById = Object.fromEntries(assets.map((a) => [a.asset_id, a]));
 
-  // --- 보유종목 추가 ---
-  const doResolve = async () => setPreview(await api.resolve(ticker, market, assetType || undefined));
+  const doResolve = async () => {
+    const res = await api.resolve(ticker, market, assetType || undefined);
+    setPreview(res);
+    if (res.ok && res.asset) setLot({ ...emptyLot, asset_class: res.asset.asset_class ?? "" });
+  };
   const addNew = async () => {
     if (!preview?.asset) return;
     await api.createHoldingWithAsset({
-      ...preview.asset,
+      ...preview.asset, asset_class: lot.asset_class || null,
       quantity: Number(lot.quantity), purchase_price: Number(lot.purchase_price),
       purchase_date: lot.purchase_date || null, fee: Number(lot.fee || 0), memo: lot.memo || null,
     });
@@ -52,21 +52,20 @@ export default function Holdings() {
     await load();
   };
 
-  // --- 현금 추가 ---
   const addCash = async () => {
-    await api.createCash({ currency: cashForm.currency, amount: Number(cashForm.amount),
-      label: cashForm.label || null });
+    await api.createCash({ currency: cashForm.currency, amount: Number(cashForm.amount), label: cashForm.label || null });
     setCashForm({ ...emptyCash });
     await load();
   };
 
-  // --- 보유 수정/삭제 ---
   const startEditH = (h: any) => {
     setEditHid(h.holding_id);
     setEditH({ quantity: h.quantity, purchase_price: h.purchase_price,
-      purchase_date: h.purchase_date ?? "", fee: h.fee, memo: h.memo ?? "" });
+      purchase_date: h.purchase_date ?? "", fee: h.fee, memo: h.memo ?? "",
+      asset_class: assetById[h.asset_id]?.asset_class ?? "" });
   };
-  const saveH = async () => {
+  const saveH = async (h: any) => {
+    await api.updateAsset(h.asset_id, { asset_class: editH.asset_class || null });
     await api.updateHolding(editHid!, {
       quantity: Number(editH.quantity), purchase_price: Number(editH.purchase_price),
       purchase_date: editH.purchase_date || null, fee: Number(editH.fee || 0), memo: editH.memo || null });
@@ -74,14 +73,9 @@ export default function Holdings() {
   };
   const removeH = async (id: number) => { await api.deleteHolding(id); await load(); };
 
-  // --- 현금 수정/삭제 ---
-  const startEditC = (c: any) => {
-    setEditCid(c.id);
-    setEditC({ currency: c.currency, amount: c.amount, label: c.label ?? "" });
-  };
+  const startEditC = (c: any) => { setEditCid(c.id); setEditC({ currency: c.currency, amount: c.amount, label: c.label ?? "" }); };
   const saveC = async () => {
-    await api.updateCash(editCid!, { currency: editC.currency, amount: Number(editC.amount),
-      label: editC.label || null });
+    await api.updateCash(editCid!, { currency: editC.currency, amount: Number(editC.amount), label: editC.label || null });
     setEditCid(null); await load();
   };
   const removeC = async (id: number) => { await api.deleteCash(id); await load(); };
@@ -90,11 +84,11 @@ export default function Holdings() {
 
   return (
     <div className="p-6 space-y-8">
-      {/* ===== 추가 입력 ===== */}
+      <datalist id="asset-classes">{ASSET_CLASSES.map((c) => <option key={c} value={c} />)}</datalist>
+
       <div className="space-y-6">
         <h1 className="text-xl font-bold">보유 추가</h1>
 
-        {/* 보유종목 */}
         <section className="space-y-2">
           <h2 className="font-semibold text-gray-700">종목</h2>
           <div className="flex gap-2 items-center flex-wrap">
@@ -120,6 +114,8 @@ export default function Holdings() {
                   value={lot.purchase_date} onChange={(e) => setLot({ ...lot, purchase_date: e.target.value })} />
                 <input className={`${inp} w-24`} placeholder="수수료"
                   value={lot.fee} onChange={(e) => setLot({ ...lot, fee: e.target.value })} />
+                <input list="asset-classes" className={`${inp} w-28`} placeholder="자산군"
+                  value={lot.asset_class} onChange={(e) => setLot({ ...lot, asset_class: e.target.value })} />
                 <input className={inp} placeholder="메모"
                   value={lot.memo} onChange={(e) => setLot({ ...lot, memo: e.target.value })} />
                 <button onClick={addNew} className="px-3 py-1 rounded bg-blue-600 text-white">추가</button>
@@ -134,7 +130,6 @@ export default function Holdings() {
           ))}
         </section>
 
-        {/* 현금 */}
         <section className="space-y-2">
           <h2 className="font-semibold text-gray-700">현금</h2>
           <div className="flex gap-2 flex-wrap items-center">
@@ -151,12 +146,11 @@ export default function Holdings() {
         </section>
       </div>
 
-      {/* ===== 보유 목록 ===== */}
       <section>
         <h2 className="font-semibold mb-2">보유 종목</h2>
         <table className="w-full text-sm">
           <thead><tr className="border-b text-left text-gray-500">
-            <th className="py-2">종목</th><th>매입일</th><th>수량</th><th>단가</th><th>수수료</th><th>메모</th><th></th>
+            <th className="py-2">종목</th><th>자산군</th><th>매입일</th><th>수량</th><th>단가</th><th>수수료</th><th>메모</th><th></th>
           </tr></thead>
           <tbody>
             {holdings.map((h) => {
@@ -167,6 +161,8 @@ export default function Holdings() {
                   <td className="py-2">{a ? `${a.name} (${a.ticker}·${a.market})` : `#${h.asset_id}`}</td>
                   {editing ? (
                     <>
+                      <td><input list="asset-classes" className={`${inp} w-24`} value={editH.asset_class}
+                        onChange={(e) => setEditH({ ...editH, asset_class: e.target.value })} /></td>
                       <td><input type="date" className={`${inp} w-36`} value={editH.purchase_date}
                         onChange={(e) => setEditH({ ...editH, purchase_date: e.target.value })} /></td>
                       <td><input className={`${inp} w-20`} value={editH.quantity}
@@ -178,12 +174,13 @@ export default function Holdings() {
                       <td><input className={`${inp} w-28`} value={editH.memo}
                         onChange={(e) => setEditH({ ...editH, memo: e.target.value })} /></td>
                       <td className="whitespace-nowrap">
-                        <button onClick={saveH} className="text-blue-600 mr-2">저장</button>
+                        <button onClick={() => saveH(h)} className="text-blue-600 mr-2">저장</button>
                         <button onClick={() => setEditHid(null)} className="text-gray-500">취소</button>
                       </td>
                     </>
                   ) : (
                     <>
+                      <td>{a?.asset_class ?? "—"}</td>
                       <td>{h.purchase_date ?? "—"}</td><td>{h.quantity}</td><td>{h.purchase_price}</td>
                       <td>{h.fee}</td><td>{h.memo ?? "—"}</td>
                       <td className="whitespace-nowrap">
@@ -199,7 +196,6 @@ export default function Holdings() {
         </table>
       </section>
 
-      {/* ===== 현금 목록 ===== */}
       <section>
         <h2 className="font-semibold mb-2">현금</h2>
         <table className="w-full text-sm">

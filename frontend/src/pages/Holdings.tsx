@@ -3,14 +3,14 @@ import { api } from "../api";
 
 export default function Holdings() {
   const [assets, setAssets] = useState<any[]>([]); const [holdings, setHoldings] = useState<any[]>([]);
-  const [form, setForm] = useState<any>({ asset_id: "", purchase_date: "", quantity: "", purchase_price: "", fee: 0, memo: "" });
+  const [form, setForm] = useState<any>({ asset_id: "", purchase_date: "", quantity: "", purchase_price: "", fee: "", memo: "" });
   const load = async () => { setAssets(await api.listAssets()); setHoldings(await api.listHoldings()); };
   useEffect(() => { load(); }, []);
 
   const submit = async () => {
     await api.createHolding({ ...form, asset_id: Number(form.asset_id),
       quantity: Number(form.quantity), purchase_price: Number(form.purchase_price), fee: Number(form.fee) });
-    setForm({ asset_id: "", purchase_date: "", quantity: "", purchase_price: "", fee: 0, memo: "" });
+    setForm({ asset_id: "", purchase_date: "", quantity: "", purchase_price: "", fee: "", memo: "" });
     await load();
   };
   const remove = async (id: number) => { await api.deleteHolding(id); await load(); };

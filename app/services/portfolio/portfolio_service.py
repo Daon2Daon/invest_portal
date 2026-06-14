@@ -27,7 +27,7 @@ def aggregate_position(lots: list[dict], current_price: float, fx_now: float) ->
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import Asset, Holding
+from app.models import Asset, Holding, CashBalance
 from app.services.market.quote_service import get_quote
 from app.services.fx.fx_service import get_rate_to_krw
 
@@ -45,7 +45,6 @@ async def get_portfolio(db: AsyncSession) -> dict:
         quote = await get_quote(asset)
         fx_now = await get_rate_to_krw(db, asset.currency) or 0.0
         lot_dicts = [dict(quantity=float(l.quantity), purchase_price=float(l.purchase_price),
-                          purchase_fx_rate=float(l.purchase_fx_rate) if l.purchase_fx_rate else None,
                           fee=float(l.fee or 0)) for l in lots]
         agg = aggregate_position(lot_dicts, current_price=quote.price, fx_now=fx_now)
         total_value += agg["value_krw"]
@@ -54,15 +53,35 @@ async def get_portfolio(db: AsyncSession) -> dict:
             "market": asset.market, "currency": asset.currency,
             "current_price": quote.price, "price_status": quote.status, **agg,
         })
+
+    # 현금: 통화별 KRW 환산. 매수·매도와 연동하지 않음(독립 관리).
+    cash_rows = (await db.execute(select(CashBalance))).scalars().all()
+    cash = []
+    total_cash = 0.0
+    for c in cash_rows:
+        fx = await get_rate_to_krw(db, c.currency) or 0.0
+        value_krw = float(c.amount) * fx
+        total_cash += value_krw
+        total_value += value_krw
+        cash.append({"id": c.id, "currency": c.currency, "amount": float(c.amount),
+                     "label": c.label, "value_krw": value_krw})
+
+    # 비중은 종목+현금 전체(total_value) 기준.
     for p in positions:
         p["weight_pct"] = (p["value_krw"] / total_value * 100) if total_value else 0
+    for c in cash:
+        c["weight_pct"] = (c["value_krw"] / total_value * 100) if total_value else 0
+
     total_cost = sum(p["cost_krw"] for p in positions)
+    positions_value = total_value - total_cash   # 종목 평가액 합(현금 제외)
     return {
         "positions": positions,
+        "cash": cash,
         "summary": {
             "total_value_krw": total_value,
             "total_cost_krw": total_cost,
-            "total_profit_loss_krw": total_value - total_cost,
-            "total_profit_loss_pct": ((total_value - total_cost) / total_cost * 100) if total_cost else 0,
+            "total_profit_loss_krw": positions_value - total_cost,
+            "total_profit_loss_pct": ((positions_value - total_cost) / total_cost * 100) if total_cost else 0,
+            "total_cash_krw": total_cash,
         },
     }

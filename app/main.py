@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.db import engine
 from app.bootstrap import ensure_schema
-from app.routers import assets, holdings, portfolio, fx, settings as settings_router, cash
+from app.routers import assets, holdings, portfolio, fx, settings as settings_router, cash, charts
 
 STATIC_DIR = Path(__file__).parent / "static"
 UI_DIR = STATIC_DIR / "ui"
@@ -31,7 +31,7 @@ app.add_middleware(
     allow_methods=["*"], allow_headers=["*"],
 )
 
-for r in (assets.router, holdings.router, portfolio.router, fx.router, settings_router.router, cash.router):
+for r in (assets.router, holdings.router, portfolio.router, fx.router, settings_router.router, cash.router, charts.router):
     app.include_router(r)
 
 

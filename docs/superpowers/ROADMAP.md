@@ -27,6 +27,15 @@
 - **KR ETF 조회 수정(2026-06-14, main `6c447dc`):** pykrx 1.2.8의 ETF 엔드포인트(get_etf_ticker_list/ohlcv)가 현재 KRX API와 안 맞아 깨짐(KeyError '시장'/'isin') → KR ETF는 pykrx 실패 후 yfinance 폴백으로 처리. YFinanceProvider가 KR에 `.KS`→`.KQ` 접미사를 붙이도록 수정(통화 KRW)해 KR ETF/주식 모두 yfinance 폴백 가능. 즉 **KR 주식=pykrx, KR ETF=yfinance(.KS)** 로 동작. pykrx ETF 지원이 복구되면 _classify가 다시 ETF로 분기하나, yfinance 폴백이 안전망으로 유지됨.
 - **남은 UX/기능 후보:** 수동가격(채권 등) 입력 UI 없음(manual-price 엔드포인트는 있음). 관심종목(watchlist) 메뉴는 2단계.
 
+## 자산군 분류 + 자산군별 비중 — **구현 완료 (main 병합됨, 2026-06-14)**
+- spec: `docs/superpowers/specs/2026-06-14-asset-class-classification-design.md`
+- plan: `docs/superpowers/plans/2026-06-14-asset-class-classification.md`
+- 내용: `assets.asset_class`(단일, 추천목록 주식/채권/현금성/원자재/가상자산/대체투자/기타 + 자유입력), asset_type→자산군 기본 매핑(`default_asset_class`), 등록 시 자동 채움 + 수정(`PUT /api/assets/{id}`), 대시보드 자산군별 비중 표(현금=현금성). 보유 폼/목록에서 자산군 입력·인라인 수정.
+- 상태: 단위테스트 27 passed/4 skipped, 빌드 통과, 실DB 엔드투엔드(resolve 기본값→with-asset 저장→portfolio asset_class·allocation→PUT로 자산군 이동) 검증. 스모크에서 버그 1건(HoldingWithAssetCreate에 asset_class 누락 → with-asset 500) 발견·수정.
+- DB 마이그레이션: `ALTER TABLE invest.assets ADD COLUMN IF NOT EXISTS asset_class TEXT` + 기존 8개 자산 asset_type 기준 backfill(완료). **주의**: ensure_schema는 create-only라 기존 DB는 이 ALTER가 필요(신규 DB는 모델에 컬럼이 있어 자동 생성). 현재 dev DB는 적용 완료.
+- 참고: 같은 티커 재추가(분할매수)는 자산의 asset_class를 덮어쓰지 않음(분류 보존). 자산군 변경은 PUT으로.
+- 후속 후보: 다중 태그, 자산군별 목표비중·리밸런싱, 파이차트 시각화.
+
 ## 2단계: chartbot + 텔레그램 — **미착수**
 시작 시 `superpowers:brainstorming`으로 새 spec 작성. 핵심:
 - chartbot 포팅: my-assistant `app/services/bots/chart_bot.py`(4패널 캔들+RSI+MACD+거래량)·`chart_analyzer.py`(AI 해석)의 검증된 로직만 선별 참조해 새로 작성.

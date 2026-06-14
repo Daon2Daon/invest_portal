@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 import yfinance as yf
 from app.services.market.types import ResolvedAsset, Quote
 from app.services.market._num import finite
@@ -86,3 +86,15 @@ class YFinanceProvider:
                          change_pct=change_pct, volume=vol, as_of=date.today(), status="ok")
         except Exception:
             return Quote(price=0.0, currency=currency, status="error")
+
+    def history(self, fetch_symbol, market, days):
+        try:
+            start = (date.today() - timedelta(days=days)).isoformat()
+            df = yf.Ticker(fetch_symbol).history(start=start, auto_adjust=False)
+            if df is None or df.empty:
+                return None
+            if not all(c in df.columns for c in ["Open", "High", "Low", "Close", "Volume"]):
+                return None
+            return df[["Open", "High", "Low", "Close", "Volume"]].copy()
+        except Exception:
+            return None

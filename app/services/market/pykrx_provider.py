@@ -85,3 +85,20 @@ class PykrxProvider:
                          change_pct=change_pct, volume=vol, as_of=date.today(), status="ok")
         except Exception:
             return Quote(price=0.0, currency="KRW", status="error")
+
+    def history(self, fetch_symbol, market, days):
+        try:
+            today = datetime.now(ZoneInfo("Asia/Seoul"))
+            end = today.strftime("%Y%m%d")
+            start = (today - timedelta(days=days)).strftime("%Y%m%d")
+            df = stock.get_market_ohlcv_by_date(start, end, fetch_symbol)
+            if df is None or df.empty:
+                return None
+            df = df.rename(columns={"시가": "Open", "고가": "High", "저가": "Low",
+                                    "종가": "Close", "거래량": "Volume"})
+            need = ["Open", "High", "Low", "Close", "Volume"]
+            if not all(c in df.columns for c in need):
+                return None
+            return df[need].copy()
+        except Exception:
+            return None

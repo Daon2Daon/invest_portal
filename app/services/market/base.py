@@ -8,3 +8,6 @@ class PriceProvider(Protocol):
 
     def quote(self, fetch_symbol: str, currency: str, asset_type: str) -> Quote | None:
         ...
+
+    def history(self, fetch_symbol: str, market: str, days: int):
+        ...

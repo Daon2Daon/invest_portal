@@ -30,6 +30,11 @@ export const api = {
   updateCash: (id: number, c: any) =>
     j(`/api/cash/${id}`, { method: "PUT", body: JSON.stringify(c) }),
   deleteCash: (id: number) => j(`/api/cash/${id}`, { method: "DELETE" }),
+  chartUrl: (id: number, period: "daily" | "weekly") => `/api/charts/${id}?period=${period}`,
+  sendChartTelegram: (id: number) => j(`/api/charts/${id}/send-telegram`, { method: "POST" }),
+  getTelegram: () => j<{ bot_token_set: boolean; chat_id: string }>("/api/settings/telegram"),
+  saveTelegram: (t: { bot_token?: string; chat_id?: string }) =>
+    j("/api/settings/telegram", { method: "PUT", body: JSON.stringify(t) }),
 };
 
 export interface ResolveResponse {

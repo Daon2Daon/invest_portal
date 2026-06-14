@@ -21,6 +21,7 @@ class HoldingWithAssetCreate(BaseModel):
     data_source: str
     fetch_symbol: str
     name_en: str | None = None
+    asset_class: str | None = None
     # 보유 필드
     quantity: float
     purchase_price: float

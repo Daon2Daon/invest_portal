@@ -7,6 +7,7 @@ class Position(BaseModel):
     name: str
     market: str
     currency: str
+    asset_class: str
     quantity: float
     avg_price: float
     current_price: float
@@ -30,6 +31,12 @@ class CashPosition(BaseModel):
     weight_pct: float
 
 
+class AllocationSlice(BaseModel):
+    asset_class: str
+    value_krw: float
+    weight_pct: float
+
+
 class PortfolioSummary(BaseModel):
     total_value_krw: float
     total_cost_krw: float
@@ -41,4 +48,5 @@ class PortfolioSummary(BaseModel):
 class PortfolioOut(BaseModel):
     positions: list[Position]
     cash: list[CashPosition]
+    allocation: list[AllocationSlice]
     summary: PortfolioSummary

@@ -10,6 +10,12 @@ class AssetCreate(BaseModel):
     data_source: str
     fetch_symbol: str
     name_en: str | None = None
+    asset_class: str | None = None
+
+
+class AssetUpdate(BaseModel):
+    name: str | None = None
+    asset_class: str | None = None
 
 
 class ManualPriceUpdate(BaseModel):
@@ -26,6 +32,7 @@ class AssetOut(BaseModel):
     currency: str
     data_source: str
     fetch_symbol: str
+    asset_class: str | None = None
     manual_price: float | None = None
     is_active: bool
 

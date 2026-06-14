@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.models import Holding, Asset
 from app.schemas.holding import HoldingCreate, HoldingWithAssetCreate, HoldingUpdate, HoldingOut
+from app.services.market.asset_class import default_asset_class
 
 router = APIRouter(prefix="/api/holdings", tags=["holdings"])
 
@@ -30,6 +31,7 @@ async def create_with_asset(body: HoldingWithAssetCreate, db: AsyncSession = Dep
             ticker=body.ticker, name=body.name, asset_type=body.asset_type, market=body.market,
             currency=body.currency, data_source=body.data_source, fetch_symbol=body.fetch_symbol,
             name_en=body.name_en,
+            asset_class=body.asset_class or default_asset_class(body.asset_type),
         )
         db.add(asset)
         await db.flush()   # asset_id 확보(커밋 전)

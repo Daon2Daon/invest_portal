@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.models import Asset
 from app.schemas.market import ResolveRequest, ResolveResponse, ResolvedAssetOut
-from app.schemas.asset import AssetCreate, AssetOut, ManualPriceUpdate
+from app.schemas.asset import AssetCreate, AssetUpdate, AssetOut, ManualPriceUpdate
 from app.services.market.resolver import AssetResolver
 from app.services.market.quote_service import get_quote
 
@@ -34,6 +34,22 @@ async def create_asset(body: AssetCreate, db: AsyncSession = Depends(get_db)):
     except IntegrityError:
         await db.rollback()
         raise HTTPException(409, "이미 등록된 티커/시장 조합입니다.")
+    await db.refresh(asset)
+    return asset
+
+
+@router.put("/{asset_id}", response_model=AssetOut)
+async def update_asset(asset_id: int, body: AssetUpdate, db: AsyncSession = Depends(get_db)):
+    asset = await db.get(Asset, asset_id)
+    if asset is None:
+        raise HTTPException(404, "asset not found")
+    data = body.model_dump(exclude_unset=True)
+    if "asset_class" in data:
+        ac = data["asset_class"]
+        asset.asset_class = ac.strip() if (ac and ac.strip()) else None
+    if "name" in data and data["name"]:
+        asset.name = data["name"]
+    await db.commit()
     await db.refresh(asset)
     return asset
 

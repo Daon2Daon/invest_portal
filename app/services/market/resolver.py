@@ -37,6 +37,10 @@ class AssetResolver:
             tried.append(name)
             asset = self.providers[name].resolve(ticker, market, asset_type_hint)
             if asset is not None:
+                # 사용자가 유형을 명시했으면 저장 유형으로 존중한다.
+                # (시세·통화·이름·fetch_symbol은 데이터 소스가 채운 값을 유지)
+                if asset_type_hint:
+                    asset.asset_type = asset_type_hint
                 return ResolveResult(ok=True, asset=asset, tried=tried)
         return ResolveResult(
             ok=False, tried=tried,

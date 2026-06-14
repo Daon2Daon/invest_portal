@@ -4,6 +4,16 @@ import type { ResolveResponse } from "../api";
 
 const MARKETS = ["US", "KR", "JP", "CRYPTO"];
 
+// 표시명 → 저장 코드. 빈 값은 "자동 감지"(데이터 소스가 유형 판별).
+const ASSET_TYPES: { code: string; label: string }[] = [
+  { code: "", label: "자동 감지" },
+  { code: "stock", label: "주식" },
+  { code: "etf", label: "ETF" },
+  { code: "bond", label: "채권 (수동가격)" },
+  { code: "commodity", label: "원자재" },
+  { code: "crypto", label: "가상자산" },
+];
+
 export default function Assets() {
   const [ticker, setTicker] = useState(""); const [market, setMarket] = useState("US");
   const [assetType, setAssetType] = useState(""); const [preview, setPreview] = useState<ResolveResponse | null>(null);
@@ -28,8 +38,10 @@ export default function Assets() {
         <select className="border rounded px-2 py-1" value={market} onChange={(e) => setMarket(e.target.value)}>
           {MARKETS.map((m) => <option key={m}>{m}</option>)}
         </select>
-        <input className="border rounded px-2 py-1 w-32" placeholder="유형(선택: bond)"
-          value={assetType} onChange={(e) => setAssetType(e.target.value)} />
+        <select className="border rounded px-2 py-1" value={assetType}
+          onChange={(e) => setAssetType(e.target.value)}>
+          {ASSET_TYPES.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+        </select>
         <button onClick={doResolve} className="px-3 py-1 rounded bg-gray-800 text-white">조회</button>
       </div>
 
@@ -48,7 +60,7 @@ export default function Assets() {
 
       <h2 className="font-semibold mt-4">등록된 자산</h2>
       <ul className="text-sm">
-        {assets.map((a) => <li key={a.asset_id}>{a.ticker}·{a.market} — {a.name} ({a.data_source})</li>)}
+        {assets.map((a) => <li key={a.asset_id}>{a.ticker}·{a.market} — {a.name} · {a.asset_type} ({a.data_source})</li>)}
       </ul>
     </div>
   );

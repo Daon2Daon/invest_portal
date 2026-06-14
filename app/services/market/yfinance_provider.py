@@ -10,6 +10,7 @@ _QUOTE_TYPE_MAP = {
     "INDEX": "index",
     "MUTUALFUND": "fund",
     "CRYPTOCURRENCY": "crypto",
+    "FUTURE": "commodity",
 }
 
 _MARKET_CURRENCY = {"US": "USD", "JP": "JPY", "CRYPTO": "USD"}

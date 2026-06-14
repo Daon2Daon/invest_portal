@@ -18,3 +18,6 @@ class ManualProvider:
         if manual_price is None:
             return Quote(price=0.0, currency=currency, status="stale")
         return Quote(price=float(manual_price), currency=currency, as_of=date.today(), status="ok")
+
+    def history(self, fetch_symbol, market, days):
+        return None  # 수동 자산은 시세 이력이 없어 차트 불가

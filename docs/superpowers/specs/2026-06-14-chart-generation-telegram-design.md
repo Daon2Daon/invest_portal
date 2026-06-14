@@ -60,14 +60,17 @@ my-assistant chartbot의 검증된 차트·발송 흐름을 invest_portal 스택
 
 - `GET /api/charts/{asset_id}?period=daily|weekly` → `StreamingResponse(media_type="image/png")`. 자산 조회→history→차트 생성→PNG 스트림. manual/이력 없음 자산은 422.
 - **프론트 "차트" 메뉴**(신규): 자산 드롭다운(보유 자산 목록) 선택 → 일봉/주봉 `<img src="/api/charts/{id}?period=...">` 표시 → "텔레그램 발송" 버튼.
-- 메뉴: 대시보드 · 보유 · **차트**.
+- 메뉴: 대시보드 · 보유 · **차트** · **설정**.
 
 ## 6. 텔레그램 (2b)
 
 ### 6.1 설정
 `app_settings`의 `notification` 카테고리:
 - `telegram_bot_token`(is_secret=true, Fernet), `telegram_chat_id`.
-설정 조회/저장은 기존 `settings_manager.get_setting/set_setting` 사용. 설정 UI(설정 화면 또는 차트 화면 내 설정 섹션)에서 입력.
+설정 조회/저장은 기존 `settings_manager.get_setting/set_setting`(및 `/api/settings` 라우터) 사용.
+**신규 "설정" 페이지**(전용 메뉴)에 텔레그램 섹션(봇 토큰·chat_id 입력)을 둔다. AI 등 다른 설정 섹션은
+후속 하위 프로젝트에서 같은 페이지에 추가한다. 비밀값(봇 토큰)은 GET 시 평문 노출 대신 "설정됨/미설정"
+표시로 다루는 것을 권장(저장은 평소대로).
 
 ### 6.2 telegram_service
 `send_photo(png: bytes, caption: str) -> bool`, `send_message(text: str) -> bool`.
@@ -86,7 +89,8 @@ my-assistant chartbot의 검증된 차트·발송 흐름을 invest_portal 스택
 - 신규: `app/services/market/history_service.py`, `app/services/chart/chart_service.py`, `app/services/notification/telegram_service.py`.
 - 신규 라우터: `app/routers/charts.py`(GET 차트, POST send-telegram). `app/routers/settings.py`는 기존 활용(텔레그램 설정 저장/조회).
 - `app/main.py`: charts 라우터 등록.
-- 프론트: `api.ts`(차트 URL 헬퍼, sendTelegram, 텔레그램 설정 get/set), `pages/Charts.tsx`(신규), `App.tsx`(차트 라우트·네비), 텔레그램 설정 입력 UI.
+- 프론트: `api.ts`(차트 URL 헬퍼, sendTelegram, 텔레그램 설정 get/set), `pages/Charts.tsx`(신규), `pages/Settings.tsx`(신규 — 텔레그램 섹션), `App.tsx`(차트·설정 라우트·네비).
+- `app/routers/settings.py`: 현재 단건 get/put만 있으므로 텔레그램 설정 묶음 조회/저장 엔드포인트(또는 기존 단건 API 재사용) 정비. 봇 토큰은 "설정됨" 여부만 반환.
 
 ## 8. 테스트
 - 단위: 지표 계산값(RSI/MACD/Bollinger; 알려진 입력→기대값), history 디스패치(provider 모킹: yfinance/pykrx/manual), 차트 생성이 비어있지 않은 PNG(매직바이트 `\x89PNG`) 반환(Agg, 모킹 OHLCV), 주봉 리샘플 정확성, 텔레그램 페이로드·URL 구성(httpx 모킹), 토큰 미설정 시 오류.

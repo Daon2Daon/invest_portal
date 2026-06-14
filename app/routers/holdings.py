@@ -4,23 +4,39 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import Holding, Asset
-from app.schemas.holding import HoldingCreate, HoldingUpdate, HoldingOut
-from app.services.fx.fx_service import get_rate_to_krw
+from app.schemas.holding import HoldingCreate, HoldingWithAssetCreate, HoldingUpdate, HoldingOut
 
 router = APIRouter(prefix="/api/holdings", tags=["holdings"])
 
 
 @router.post("", response_model=HoldingOut)
 async def create_holding(body: HoldingCreate, db: AsyncSession = Depends(get_db)):
-    data = body.model_dump()
-    if data.get("purchase_fx_rate") is None:
-        asset = await db.get(Asset, data["asset_id"])
-        if asset is not None:
-            if asset.currency == "KRW":
-                data["purchase_fx_rate"] = 1
-            else:
-                data["purchase_fx_rate"] = await get_rate_to_krw(db, asset.currency, on=data["purchase_date"])
-    h = Holding(**data)
+    """기존 자산(asset_id)에 보유 lot 추가(분할매수)."""
+    h = Holding(**body.model_dump())
+    db.add(h)
+    await db.commit()
+    await db.refresh(h)
+    return h
+
+
+@router.post("/with-asset", response_model=HoldingOut)
+async def create_with_asset(body: HoldingWithAssetCreate, db: AsyncSession = Depends(get_db)):
+    """자산 upsert((ticker, market) 기준) + 보유 생성을 한 번에 처리."""
+    asset = (await db.execute(
+        select(Asset).where(Asset.ticker == body.ticker, Asset.market == body.market)
+    )).scalar_one_or_none()
+    if asset is None:
+        asset = Asset(
+            ticker=body.ticker, name=body.name, asset_type=body.asset_type, market=body.market,
+            currency=body.currency, data_source=body.data_source, fetch_symbol=body.fetch_symbol,
+            name_en=body.name_en,
+        )
+        db.add(asset)
+        await db.flush()   # asset_id 확보(커밋 전)
+    h = Holding(
+        asset_id=asset.asset_id, quantity=body.quantity, purchase_price=body.purchase_price,
+        purchase_date=body.purchase_date, fee=body.fee, memo=body.memo,
+    )
     db.add(h)
     await db.commit()
     await db.refresh(h)

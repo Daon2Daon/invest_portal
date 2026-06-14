@@ -24,6 +24,7 @@
 - DB 마이그레이션: 사용자 실데이터(005930·112610 보유 2건)가 있어 drop 대신 **ALTER in-place**(purchase_fx_rate 컬럼 제거 + purchase_date DROP NOT NULL)로 데이터 보존. `cash_balances`는 부팅 시 자동 생성.
 - **UI 간소화(2026-06-14 추가, main `f6910c4`):** 자산등록·현금 페이지 제거 → 메뉴를 **대시보드·보유 2개**로 통합. 보유 화면에서 종목·현금 입력 + 보유/현금 목록 **인라인 수정**(자산명 표시). 죽은 createAsset/createHolding api 제거. 같은 티커 재입력 시 with-asset이 분할매수 처리. (이전 "현금 수정 폼 없음·asset_id만 표시" UX 항목 해결됨.)
 - **참고:** pykrx 005930 현재가는 정상(사용자 확인). 별도 점검 불필요.
+- **KR ETF 조회 수정(2026-06-14, main `6c447dc`):** pykrx 1.2.8의 ETF 엔드포인트(get_etf_ticker_list/ohlcv)가 현재 KRX API와 안 맞아 깨짐(KeyError '시장'/'isin') → KR ETF는 pykrx 실패 후 yfinance 폴백으로 처리. YFinanceProvider가 KR에 `.KS`→`.KQ` 접미사를 붙이도록 수정(통화 KRW)해 KR ETF/주식 모두 yfinance 폴백 가능. 즉 **KR 주식=pykrx, KR ETF=yfinance(.KS)** 로 동작. pykrx ETF 지원이 복구되면 _classify가 다시 ETF로 분기하나, yfinance 폴백이 안전망으로 유지됨.
 - **남은 UX/기능 후보:** 수동가격(채권 등) 입력 UI 없음(manual-price 엔드포인트는 있음). 관심종목(watchlist) 메뉴는 2단계.
 
 ## 2단계: chartbot + 텔레그램 — **미착수**

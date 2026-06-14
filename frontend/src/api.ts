@@ -20,6 +20,13 @@ export const api = {
   deleteHolding: (id: number) => j(`/api/holdings/${id}`, { method: "DELETE" }),
   portfolio: () => j<PortfolioOut>("/api/portfolio"),
   refresh: () => j<PortfolioOut>("/api/portfolio/refresh", { method: "POST" }),
+  createHoldingWithAsset: (h: any) =>
+    j("/api/holdings/with-asset", { method: "POST", body: JSON.stringify(h) }),
+  listCash: () => j<any[]>("/api/cash"),
+  createCash: (c: any) => j("/api/cash", { method: "POST", body: JSON.stringify(c) }),
+  updateCash: (id: number, c: any) =>
+    j(`/api/cash/${id}`, { method: "PUT", body: JSON.stringify(c) }),
+  deleteCash: (id: number) => j(`/api/cash/${id}`, { method: "DELETE" }),
 };
 
 export interface ResolveResponse {
@@ -30,12 +37,18 @@ export interface ResolveResponse {
 }
 export interface Position {
   asset_id: number; ticker: string; name: string; market: string; currency: string;
-  quantity: number; avg_price: number; current_price: number; cost_krw: number;
-  value_krw: number; profit_loss_krw: number; profit_loss_pct: number;
+  quantity: number; avg_price: number; current_price: number;
+  cost_native: number; value_native: number; profit_loss_native: number;
+  cost_krw: number; value_krw: number; profit_loss_krw: number; profit_loss_pct: number;
   weight_pct: number; price_status: string;
+}
+export interface CashPosition {
+  id: number; currency: string; amount: number; label: string | null;
+  value_krw: number; weight_pct: number;
 }
 export interface PortfolioOut {
   positions: Position[];
+  cash: CashPosition[];
   summary: { total_value_krw: number; total_cost_krw: number;
-             total_profit_loss_krw: number; total_profit_loss_pct: number };
+             total_profit_loss_krw: number; total_profit_loss_pct: number; total_cash_krw: number };
 }

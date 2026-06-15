@@ -13,6 +13,7 @@ from app.services.chart.chart_service import generate_ta_chart, to_weekly
 from app.services.notification import telegram_service
 from app.services.market.quote_service import get_quote
 from app.services.ai import chart_analyzer
+from app.services.ai.llm_client import LiteLLMError
 
 router = APIRouter(prefix="/api/charts", tags=["charts"])
 
@@ -55,7 +56,7 @@ async def analyze(asset_id: int, db: AsyncSession = Depends(get_db)):
         parts = await chart_analyzer.analyze(db, images, asset.ticker, asset.name, asset.market)
     except (chart_analyzer.AnalysisDisabled, chart_analyzer.AnalysisNotConfigured) as e:
         raise HTTPException(409, str(e))
-    except chart_analyzer.llm_client.LiteLLMError as e:
+    except LiteLLMError as e:
         raise HTTPException(502, str(e))
     return {"analysis": "\n\n".join(parts)}
 

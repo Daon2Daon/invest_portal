@@ -47,9 +47,13 @@
 - **노트(저위험, 미적용):** `registry.for_source`가 미지 data_source에 KeyError→500(앱 경로상 발생 불가, get_quote와 공유되는 기존 패턴). 차후 방어코드 추가 가능.
 - 메뉴: 대시보드·보유·차트·설정.
 
-### 2c: AI 차트 분석 — **미착수**
-- litellm 비전(Gemini 등)으로 차트 PNG 분석 → 코멘트 텍스트 → 텔레그램 발송. my-assistant `chart_analyzer.py` + ytdb `llm_client.py` 참조.
-- 설정: "설정" 페이지에 AI 섹션 추가(`app_settings.ai_gateway`: base_url/api_key(secret)/model/prompt).
+### 2c: AI 차트 분석 — **구현 완료 (2026-06-15)**
+- spec: `docs/superpowers/specs/2026-06-15-ai-chart-analysis-design.md`
+- plan: `docs/superpowers/plans/2026-06-15-ai-chart-analysis.md`
+- 내용: 신규 `app/services/ai/`(llm_client=httpx Gemini native passthrough 비전 + 모델목록, chart_analyzer=프롬프트빌드·md→텔레그램 HTML·길이분할·설정게이팅). 설정 `ai_gateway` 카테고리(base_url/api_key(secret)/model/prompt/enabled, settings_manager 재사용 — 신규 마이그레이션 없음). `GET/PUT /api/settings/ai`·`GET /api/settings/ai/models`(라우트 순서: 제너릭 `/{category}/{key}`보다 먼저). `POST /api/charts/{id}/analyze`(미리보기), `send-telegram`에 AI 분석 best-effort 통합(차트 PNG 재사용, AI 실패가 차트 발송을 막지 않음, `analysis_sent` 반환). 프론트: 설정 AI 섹션(모델 드롭다운+새로고침), 차트 "AI 분석" 버튼+패널(whitespace-pre-wrap, XSS 안전).
+- 상태: 단위테스트 **65 passed**(신규 24: llm_client 6 + chart_analyzer 9 + settings_ai 4 + charts_analyze 5), 프론트 빌드 통과. 태스크별 spec/품질 2단계 리뷰 통과. **실게이트웨이 스모크 미실시(게이트웨이 설정 시 사용자 확인 필요).**
+- 프로토콜: ytdb와 동일 Gemini native passthrough, base_url 직접 입력(비전 지원 게이트웨이 가정).
+- 비고: per-asset 프롬프트·temperature UI·OpenAI호환 경로·결과 DB저장·모델목록 캐싱은 YAGNI로 제외. 잘린 LLM 출력의 미닫힘 코드펜스는 평문 노출(미용상, 후속 개선 가능).
 
 ### 2d: 스케줄 자동 발송 — **미착수**
 - APScheduler(ytdb `scheduler.py` 참조). 종목별 발송시각·요일 설정 → 차트(+2c 분석) 자동 발송. 잡스토어 메모리 또는 PG.

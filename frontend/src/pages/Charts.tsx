@@ -4,8 +4,10 @@ import { api } from "../api";
 export default function Charts() {
   const [assets, setAssets] = useState<any[]>([]);
   const [assetId, setAssetId] = useState<number | null>(null);
-  const [nonce, setNonce] = useState(0);     // 이미지 캐시 버스트
+  const [nonce, setNonce] = useState(() => Date.now());
   const [msg, setMsg] = useState("");
+  const [analysis, setAnalysis] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => { api.listAssets().then((a) => { setAssets(a); if (a[0]) setAssetId(a[0].asset_id); }); }, []);
 
@@ -14,8 +16,19 @@ export default function Charts() {
     setMsg("발송 중…");
     try {
       const r: any = await api.sendChartTelegram(assetId);
-      setMsg(r.ok ? `텔레그램 발송 완료 (${r.sent}장)` : "발송 실패");
+      const extra = r.analysis_sent ? " + AI 분석" : "";
+      setMsg(r.ok ? `텔레그램 발송 완료 (${r.sent}장${extra})` : "발송 실패");
     } catch (e: any) { setMsg("발송 실패: " + e.message); }
+  };
+
+  const analyze = async () => {
+    if (!assetId) return;
+    setAnalyzing(true); setAnalysis(""); setMsg("");
+    try {
+      const r = await api.analyzeChart(assetId);
+      setAnalysis(r.analysis);
+    } catch (e: any) { setAnalysis("분석 실패: " + e.message); }
+    finally { setAnalyzing(false); }
   };
 
   const src = (period: "daily" | "weekly") =>
@@ -26,13 +39,23 @@ export default function Charts() {
       <div className="flex items-center gap-2 flex-wrap">
         <h1 className="text-xl font-bold">차트</h1>
         <select className="border rounded px-2 py-1" value={assetId ?? ""}
-          onChange={(e) => { setAssetId(Number(e.target.value)); setMsg(""); }}>
+          onChange={(e) => { setAssetId(Number(e.target.value)); setMsg(""); setAnalysis(""); }}>
           {assets.map((a) => <option key={a.asset_id} value={a.asset_id}>{a.name} ({a.ticker}·{a.market})</option>)}
         </select>
         <button onClick={() => setNonce((n) => n + 1)} className="px-3 py-1 rounded bg-gray-800 text-white">새로고침</button>
+        <button onClick={analyze} disabled={analyzing} className="px-3 py-1 rounded bg-emerald-600 text-white disabled:opacity-50">
+          {analyzing ? "분석 중…" : "AI 분석"}
+        </button>
         <button onClick={send} className="px-3 py-1 rounded bg-blue-600 text-white">텔레그램 발송</button>
         {msg && <span className="text-sm text-gray-600">{msg}</span>}
       </div>
+
+      {analysis && (
+        <div className="border rounded p-3 bg-gray-50 whitespace-pre-wrap text-sm leading-relaxed max-w-3xl">
+          {analysis}
+        </div>
+      )}
+
       {assetId && (
         <div className="space-y-6">
           <div>

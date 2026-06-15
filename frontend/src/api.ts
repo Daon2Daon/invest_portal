@@ -35,6 +35,11 @@ export const api = {
   getTelegram: () => j<{ bot_token_set: boolean; chat_id: string }>("/api/settings/telegram"),
   saveTelegram: (t: { bot_token?: string; chat_id?: string }) =>
     j("/api/settings/telegram", { method: "PUT", body: JSON.stringify(t) }),
+  getAi: () => j<{ base_url: string; api_key_set: boolean; model: string; prompt: string; enabled: boolean }>("/api/settings/ai"),
+  saveAi: (a: { base_url?: string; api_key?: string; model?: string; prompt?: string; enabled?: boolean }) =>
+    j("/api/settings/ai", { method: "PUT", body: JSON.stringify(a) }),
+  listAiModels: () => j<{ models: string[]; error?: string }>("/api/settings/ai/models"),
+  analyzeChart: (id: number) => j<{ analysis: string }>(`/api/charts/${id}/analyze`, { method: "POST" }),
 };
 
 export interface ResolveResponse {

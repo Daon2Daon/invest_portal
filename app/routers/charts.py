@@ -38,7 +38,9 @@ async def _build_png(db: AsyncSession, asset_id: int, period: str) -> bytes:
 @router.get("/{asset_id}")
 async def chart(asset_id: int, period: str = Query("daily"), db: AsyncSession = Depends(get_db)):
     png = await _build_png(db, asset_id, period)
-    return StreamingResponse(io.BytesIO(png), media_type="image/png")
+    # 시세는 수시로 바뀌므로 브라우저가 옛 PNG를 재사용하지 않도록 캐시 금지.
+    return StreamingResponse(io.BytesIO(png), media_type="image/png",
+                             headers={"Cache-Control": "no-store"})
 
 
 @router.post("/{asset_id}/send-telegram")

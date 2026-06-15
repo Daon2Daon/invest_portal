@@ -4,7 +4,7 @@ import { api } from "../api";
 export default function Charts() {
   const [assets, setAssets] = useState<any[]>([]);
   const [assetId, setAssetId] = useState<number | null>(null);
-  const [nonce, setNonce] = useState(0);     // 이미지 캐시 버스트
+  const [nonce, setNonce] = useState(() => Date.now());  // 이미지 캐시 버스트(로드마다 고유)
   const [msg, setMsg] = useState("");
 
   useEffect(() => { api.listAssets().then((a) => { setAssets(a); if (a[0]) setAssetId(a[0].asset_id); }); }, []);

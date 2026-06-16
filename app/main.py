@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.db import engine
 from app.bootstrap import ensure_schema
+from app.services.scheduler.scheduler import start_scheduler, shutdown_scheduler
 from app.routers import assets, holdings, portfolio, fx, settings as settings_router, cash, charts
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -17,7 +18,9 @@ UI_DIR = STATIC_DIR / "ui"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await ensure_schema(engine)   # 부팅 시 invest 스키마/테이블 멱등 생성
+    start_scheduler()             # 1분 tick 디스패처 시작
     yield
+    shutdown_scheduler()
     await engine.dispose()
 
 

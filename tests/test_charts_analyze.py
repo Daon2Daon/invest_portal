@@ -53,10 +53,10 @@ async def test_analyze_gateway_error_returns_502():
 @pytest.mark.asyncio
 async def test_send_telegram_best_effort_when_ai_disabled():
     quote = MagicMock(price=70000)
-    with patch("app.routers.charts._build_png", AsyncMock(return_value=b"\x89PNG")), \
-         patch("app.routers.charts.get_quote", AsyncMock(return_value=quote)), \
-         patch("app.routers.charts.telegram_service.send_photo", AsyncMock(return_value=True)), \
-         patch("app.routers.charts.chart_analyzer.analyze",
+    with patch("app.services.notification.chart_dispatch.build_png", AsyncMock(return_value=b"\x89PNG")), \
+         patch("app.services.notification.chart_dispatch.get_quote", AsyncMock(return_value=quote)), \
+         patch("app.services.notification.chart_dispatch.telegram_service.send_photo", AsyncMock(return_value=True)), \
+         patch("app.services.notification.chart_dispatch.chart_analyzer.analyze",
                AsyncMock(side_effect=chart_analyzer.AnalysisDisabled("off"))), \
          patch("app.db.AsyncSession.get", AsyncMock(return_value=_asset())):
         async with await _client() as ac:
@@ -70,11 +70,11 @@ async def test_send_telegram_best_effort_when_ai_disabled():
 @pytest.mark.asyncio
 async def test_send_telegram_sends_analysis_when_enabled():
     quote = MagicMock(price=70000)
-    with patch("app.routers.charts._build_png", AsyncMock(return_value=b"\x89PNG")), \
-         patch("app.routers.charts.get_quote", AsyncMock(return_value=quote)), \
-         patch("app.routers.charts.telegram_service.send_photo", AsyncMock(return_value=True)), \
-         patch("app.routers.charts.telegram_service.send_message", AsyncMock(return_value=True)) as sm, \
-         patch("app.routers.charts.chart_analyzer.analyze",
+    with patch("app.services.notification.chart_dispatch.build_png", AsyncMock(return_value=b"\x89PNG")), \
+         patch("app.services.notification.chart_dispatch.get_quote", AsyncMock(return_value=quote)), \
+         patch("app.services.notification.chart_dispatch.telegram_service.send_photo", AsyncMock(return_value=True)), \
+         patch("app.services.notification.chart_dispatch.telegram_service.send_message", AsyncMock(return_value=True)) as sm, \
+         patch("app.services.notification.chart_dispatch.chart_analyzer.analyze",
                AsyncMock(return_value=["<b>분석</b>"])), \
          patch("app.db.AsyncSession.get", AsyncMock(return_value=_asset())):
         async with await _client() as ac:

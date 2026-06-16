@@ -64,11 +64,14 @@ async def analyze_images(base_url: str, api_key: str, model: str,
         gen_cfg["maxOutputTokens"] = max_output_tokens
     if gen_cfg:
         body["generationConfig"] = gen_cfg
-    async with httpx.AsyncClient(timeout=_GEMINI_TIMEOUT) as client:
-        resp = await client.post(url, params={"key": api_key}, json=body)
-        if resp.status_code != 200:
-            raise LiteLLMError(f"Gemini 이미지 분석 실패: {resp.status_code} - {resp.text}")
-        text = _pick_text_from_gemini(resp.json())
+    try:
+        async with httpx.AsyncClient(timeout=_GEMINI_TIMEOUT) as client:
+            resp = await client.post(url, params={"key": api_key}, json=body)
+            if resp.status_code != 200:
+                raise LiteLLMError(f"Gemini 이미지 분석 실패: {resp.status_code} - {resp.text}")
+            text = _pick_text_from_gemini(resp.json())
+    except httpx.RequestError as e:
+        raise LiteLLMError(f"AI Gateway 연결 실패: {e}") from e
     if not text:
         raise LiteLLMError("Gemini 응답에서 텍스트를 찾지 못했습니다.")
     return text
@@ -80,9 +83,12 @@ async def list_models(base_url: str, api_key: str) -> list[str]:
     if not base:
         raise LiteLLMError("AI Gateway base_url이 비어 있습니다.")
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-    async with httpx.AsyncClient(timeout=_MODELS_TIMEOUT) as client:
-        resp = await client.get(f"{base}/v1/models", headers=headers)
-        if resp.status_code != 200:
-            raise LiteLLMError(f"/v1/models 실패: {resp.status_code} - {resp.text}")
-        data = resp.json().get("data") or []
+    try:
+        async with httpx.AsyncClient(timeout=_MODELS_TIMEOUT) as client:
+            resp = await client.get(f"{base}/v1/models", headers=headers)
+            if resp.status_code != 200:
+                raise LiteLLMError(f"/v1/models 실패: {resp.status_code} - {resp.text}")
+            data = resp.json().get("data") or []
+    except httpx.RequestError as e:
+        raise LiteLLMError(f"AI Gateway 연결 실패: {e}") from e
     return [m["id"] for m in data if m.get("id")]

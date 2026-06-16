@@ -53,12 +53,12 @@ async def analyze(asset_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "asset not found")
     images = [(await _build_png(db, asset_id, p), "image/png") for p in ("daily", "weekly")]
     try:
-        parts = await chart_analyzer.analyze(db, images, asset.ticker, asset.name, asset.market)
+        text = await chart_analyzer.analyze_raw(db, images, asset.ticker, asset.name, asset.market)
     except (chart_analyzer.AnalysisDisabled, chart_analyzer.AnalysisNotConfigured) as e:
         raise HTTPException(409, str(e))
     except LiteLLMError as e:
         raise HTTPException(502, str(e))
-    return {"analysis": "\n\n".join(parts)}
+    return {"analysis": text}
 
 
 @router.post("/{asset_id}/send-telegram")

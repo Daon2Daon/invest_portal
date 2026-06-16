@@ -19,19 +19,19 @@ def _asset():
 @pytest.mark.asyncio
 async def test_analyze_returns_text():
     with patch("app.routers.charts._build_png", AsyncMock(return_value=b"\x89PNG")), \
-         patch("app.routers.charts.chart_analyzer.analyze",
-               AsyncMock(return_value=["<b>요약</b>", "두번째"])), \
+         patch("app.routers.charts.chart_analyzer.analyze_raw",
+               AsyncMock(return_value="**요약**\n\n두번째")), \
          patch("app.db.AsyncSession.get", AsyncMock(return_value=_asset())):
         async with await _client() as ac:
             resp = await ac.post("/api/charts/1/analyze")
     assert resp.status_code == 200
-    assert resp.json()["analysis"] == "<b>요약</b>\n\n두번째"
+    assert resp.json()["analysis"] == "**요약**\n\n두번째"
 
 
 @pytest.mark.asyncio
 async def test_analyze_disabled_returns_409():
     with patch("app.routers.charts._build_png", AsyncMock(return_value=b"\x89PNG")), \
-         patch("app.routers.charts.chart_analyzer.analyze",
+         patch("app.routers.charts.chart_analyzer.analyze_raw",
                AsyncMock(side_effect=chart_analyzer.AnalysisDisabled("off"))), \
          patch("app.db.AsyncSession.get", AsyncMock(return_value=_asset())):
         async with await _client() as ac:
@@ -42,7 +42,7 @@ async def test_analyze_disabled_returns_409():
 @pytest.mark.asyncio
 async def test_analyze_gateway_error_returns_502():
     with patch("app.routers.charts._build_png", AsyncMock(return_value=b"\x89PNG")), \
-         patch("app.routers.charts.chart_analyzer.analyze",
+         patch("app.routers.charts.chart_analyzer.analyze_raw",
                AsyncMock(side_effect=LiteLLMError("boom"))), \
          patch("app.db.AsyncSession.get", AsyncMock(return_value=_asset())):
         async with await _client() as ac:

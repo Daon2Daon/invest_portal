@@ -124,14 +124,20 @@ async def load_config(db: AsyncSession) -> dict:
     return {"base_url": base_url, "api_key": api_key, "model": model, "prompt": prompt}
 
 
-async def analyze(db: AsyncSession, images: list[tuple[bytes, str]],
-                  ticker: str, name: str, market: str) -> list[str]:
-    """이미지(일봉,주봉 순) → 텔레그램 HTML 메시지 조각 리스트. 미설정/비활성/실패는 예외 전파."""
+async def analyze_raw(db: AsyncSession, images: list[tuple[bytes, str]],
+                      ticker: str, name: str, market: str) -> str:
+    """이미지(일봉,주봉 순) → LLM 원문(마크다운) 텍스트. 미설정/비활성/실패는 예외 전파."""
     cfg = await load_config(db)
     chart_labels = ["일봉 (1년)", "주봉 (5년)"][:len(images)]
     prompt = _build_prompt(cfg["prompt"], ticker, name, market, chart_labels)
-    raw = await llm_client.analyze_images(
+    return await llm_client.analyze_images(
         base_url=cfg["base_url"], api_key=cfg["api_key"], model=cfg["model"],
         images=images, prompt=prompt,
         temperature=_TEMPERATURE, max_output_tokens=_MAX_OUTPUT_TOKENS)
+
+
+async def analyze(db: AsyncSession, images: list[tuple[bytes, str]],
+                  ticker: str, name: str, market: str) -> list[str]:
+    """이미지(일봉,주봉 순) → 텔레그램 HTML 메시지 조각 리스트. 미설정/비활성/실패는 예외 전파."""
+    raw = await analyze_raw(db, images, ticker, name, market)
     return _split_message(_md_to_telegram_html(raw))

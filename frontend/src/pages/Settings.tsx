@@ -48,6 +48,7 @@ export default function Settings() {
     try {
       const r = await api.listAiModels();
       setModels(r.models);
+      if (!model && r.models.length > 0) setModel(r.models[0]);
       setAiMsg(r.error ? `조회 실패: ${r.error}` : `${r.models.length}개 모델`);
     } catch (e: any) { setAiMsg("조회 실패: " + e.message); }
   };

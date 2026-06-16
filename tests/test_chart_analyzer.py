@@ -70,6 +70,19 @@ async def test_load_config_defaults_prompt():
 
 
 @pytest.mark.asyncio
+async def test_analyze_raw_returns_unconverted_markdown():
+    db = MagicMock()
+    cfg = {"base_url": "http://gw", "api_key": "K", "model": "m", "prompt": "P"}
+    with patch.object(ca, "load_config", AsyncMock(return_value=cfg)), \
+         patch.object(ca.llm_client, "analyze_images",
+                      AsyncMock(return_value="**요약**")):
+        text = await ca.analyze_raw(db, [(b"d", "image/png"), (b"w", "image/png")],
+                                    "AAPL", "Apple", "US")
+    assert text == "**요약**"
+    assert "<b>" not in text
+
+
+@pytest.mark.asyncio
 async def test_analyze_calls_client_and_formats():
     db = MagicMock()
     cfg = {"base_url": "http://gw", "api_key": "K", "model": "m", "prompt": "P"}

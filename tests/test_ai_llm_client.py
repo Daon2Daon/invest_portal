@@ -63,6 +63,31 @@ async def test_analyze_images_missing_key_raises():
 
 
 @pytest.mark.asyncio
+async def test_analyze_images_connect_error_raises_litellm_error():
+    client = AsyncMock()
+    client.post = AsyncMock(side_effect=lc.httpx.ConnectError("boom"))
+    cm = MagicMock()
+    cm.__aenter__ = AsyncMock(return_value=client)
+    cm.__aexit__ = AsyncMock(return_value=False)
+    with patch("app.services.ai.llm_client.httpx.AsyncClient", return_value=cm):
+        with pytest.raises(lc.LiteLLMError):
+            await lc.analyze_images(base_url="http://gw", api_key="K", model="m",
+                                    images=[(b"x", "image/png")], prompt="p")
+
+
+@pytest.mark.asyncio
+async def test_list_models_connect_error_raises_litellm_error():
+    client = AsyncMock()
+    client.get = AsyncMock(side_effect=lc.httpx.ConnectError("boom"))
+    cm = MagicMock()
+    cm.__aenter__ = AsyncMock(return_value=client)
+    cm.__aexit__ = AsyncMock(return_value=False)
+    with patch("app.services.ai.llm_client.httpx.AsyncClient", return_value=cm):
+        with pytest.raises(lc.LiteLLMError):
+            await lc.list_models(base_url="http://gw", api_key="K")
+
+
+@pytest.mark.asyncio
 async def test_list_models_parses_ids():
     resp = MagicMock(status_code=200)
     resp.json = MagicMock(return_value={"data": [{"id": "gemini/a"}, {"id": "gemini/b"}, {}]})

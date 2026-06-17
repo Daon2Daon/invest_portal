@@ -55,8 +55,13 @@
 - 프로토콜: ytdb와 동일 Gemini native passthrough, base_url 직접 입력(비전 지원 게이트웨이 가정).
 - 비고: per-asset 프롬프트·temperature UI·OpenAI호환 경로·결과 DB저장·모델목록 캐싱은 YAGNI로 제외. 잘린 LLM 출력의 미닫힘 코드펜스는 평문 노출(미용상, 후속 개선 가능).
 
-### 2d: 스케줄 자동 발송 — **미착수**
-- APScheduler(ytdb `scheduler.py` 참조). 종목별 발송시각·요일 설정 → 차트(+2c 분석) 자동 발송. 잡스토어 메모리 또는 PG.
+### 2d: 스케줄 자동 발송 — **구현 완료 (2026-06-16)**
+- spec: `docs/superpowers/specs/2026-06-16-scheduled-auto-send-design.md`
+- plan: `docs/superpowers/plans/2026-06-16-scheduled-auto-send.md`
+- 내용: 신규 `schedules` 테이블(범용: feature_type/target_id/send_time/days_of_week/enabled/last_run_date, ensure_schema 자동생성) + `app/services/scheduler/`(AsyncIOScheduler 메모리 잡스토어 + 1분 tick 디스패처 + `_is_due` 순수함수 + feature_type 핸들러 레지스트리). 발송 로직은 `chart_dispatch.send_chart_telegram`(라우트에서 추출)·`chart_builder.build_png`로 분리해 수동 발송/자동 발송이 공유. 스케줄 CRUD API(GET/PUT/DELETE `/api/charts/{id}/schedule`), main.py lifespan에 start/shutdown_scheduler. 프론트: 차트 페이지 "자동 발송 스케줄" 섹션(시각/요일/활성화).
+- 결정: 종목당 1개 스케줄, 잡스토어=메모리(진실의 원천=DB 테이블), KST 고정, 미스된 실행은 그날 안 늦게라도 발송(자정 넘기면 폐기), 방해금지 로직 없음. 중앙 디스패처라 여러 발송 기능이 같은 테이블·tick을 공유(향후 확장점).
+- 상태: 단위/통합테스트 **86 passed**(신규: schedule_store 4 + dispatcher 7 + charts_schedule 7 + 테이블 1), 프론트 빌드 통과. **실 스케줄 스모크는 사용자 확인 필요(가까운 시각 등록 후 발송 확인).**
+- 비고: 종목당 복수 스케줄·PG 잡스토어·기능별 별도 테이블·자정 catch-up·발송 이력 로그는 YAGNI로 제외.
 
 ## 3단계: AI 리포트 + 투자저널 + 위험신호 — **미착수**
 

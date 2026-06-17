@@ -49,6 +49,8 @@ async def dispatch_tick() -> None:
                              sched.feature_type, sched.schedule_id)
                 continue
             try:
+                # 핸들러가 도중 실패하면(예: 주봉 발송 실패) last_run_date를 남기지 않아
+                # 같은 날 다음 tick에서 재시도된다(이미 보낸 일봉은 중복될 수 있음 — 의도된 동작).
                 await handler(db, sched)
                 sched.last_run_date = now.date()
                 await db.commit()

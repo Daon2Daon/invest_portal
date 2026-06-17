@@ -40,6 +40,12 @@ export const api = {
     j("/api/settings/ai", { method: "PUT", body: JSON.stringify(a) }),
   listAiModels: () => j<{ models: string[]; error?: string }>("/api/settings/ai/models"),
   analyzeChart: (id: number) => j<{ analysis: string }>(`/api/charts/${id}/analyze`, { method: "POST" }),
+  getSchedule: (id: number) =>
+    j<{ send_time: string; days_of_week: number[]; enabled: boolean } | null>(`/api/charts/${id}/schedule`),
+  saveSchedule: (id: number, s: { send_time: string; days_of_week: number[]; enabled: boolean }) =>
+    j(`/api/charts/${id}/schedule`, { method: "PUT", body: JSON.stringify(s) }),
+  deleteSchedule: (id: number) =>
+    j(`/api/charts/${id}/schedule`, { method: "DELETE" }),
 };
 
 export interface ResolveResponse {

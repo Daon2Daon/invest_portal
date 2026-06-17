@@ -8,8 +8,21 @@ export default function Charts() {
   const [msg, setMsg] = useState("");
   const [analysis, setAnalysis] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  const [schedTime, setSchedTime] = useState("08:30");
+  const [schedDays, setSchedDays] = useState<number[]>([0, 1, 2, 3, 4]);
+  const [schedEnabled, setSchedEnabled] = useState(false);
+  const [schedMsg, setSchedMsg] = useState("");
 
   useEffect(() => { api.listAssets().then((a) => { setAssets(a); if (a[0]) setAssetId(a[0].asset_id); }); }, []);
+
+  useEffect(() => {
+    if (!assetId) return;
+    api.getSchedule(assetId).then((s) => {
+      if (s) { setSchedTime(s.send_time); setSchedDays(s.days_of_week); setSchedEnabled(s.enabled); }
+      else { setSchedTime("08:30"); setSchedDays([0, 1, 2, 3, 4]); setSchedEnabled(false); }
+      setSchedMsg("");
+    });
+  }, [assetId]);
 
   const send = async () => {
     if (!assetId) return;
@@ -29,6 +42,28 @@ export default function Charts() {
       setAnalysis(r.analysis);
     } catch (e: any) { setAnalysis("분석 실패: " + e.message); }
     finally { setAnalyzing(false); }
+  };
+
+  const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
+  const toggleDay = (d: number) =>
+    setSchedDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort());
+
+  const saveSched = async () => {
+    if (!assetId) return;
+    setSchedMsg("저장 중…");
+    try {
+      await api.saveSchedule(assetId, { send_time: schedTime, days_of_week: schedDays, enabled: schedEnabled });
+      setSchedMsg("저장됨");
+    } catch (e: any) { setSchedMsg("저장 실패: " + e.message); }
+  };
+
+  const deleteSched = async () => {
+    if (!assetId) return;
+    setSchedMsg("삭제 중…");
+    try {
+      await api.deleteSchedule(assetId);
+      setSchedEnabled(false); setSchedMsg("삭제됨");
+    } catch (e: any) { setSchedMsg("삭제 실패: " + e.message); }
   };
 
   const src = (period: "daily" | "weekly") =>
@@ -53,6 +88,35 @@ export default function Charts() {
       {analysis && (
         <div className="border rounded p-3 bg-gray-50 whitespace-pre-wrap text-sm leading-relaxed max-w-3xl">
           {analysis}
+        </div>
+      )}
+
+      {assetId && (
+        <div className="border rounded p-3 bg-white max-w-3xl space-y-2">
+          <h2 className="font-semibold text-gray-700">자동 발송 스케줄</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-sm">발송 시각</label>
+            <input type="time" className="border rounded px-2 py-1"
+              value={schedTime} onChange={(e) => setSchedTime(e.target.value)} />
+            <span className="text-xs text-gray-500">(KST)</span>
+          </div>
+          <div className="flex items-center gap-1 flex-wrap">
+            {DAY_LABELS.map((lbl, d) => (
+              <button key={d} type="button" onClick={() => toggleDay(d)}
+                className={`px-2 py-1 rounded text-sm border ${schedDays.includes(d) ? "bg-blue-600 text-white" : "bg-gray-100"}`}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+          <label className="flex gap-2 items-center text-sm">
+            <input type="checkbox" checked={schedEnabled} onChange={(e) => setSchedEnabled(e.target.checked)} />
+            스케줄 활성화
+          </label>
+          <div className="flex gap-2 items-center">
+            <button onClick={saveSched} className="px-3 py-1 rounded bg-blue-600 text-white">저장</button>
+            <button onClick={deleteSched} className="px-3 py-1 rounded bg-gray-500 text-white">삭제</button>
+            {schedMsg && <span className="text-sm text-gray-600">{schedMsg}</span>}
+          </div>
         </div>
       )}
 

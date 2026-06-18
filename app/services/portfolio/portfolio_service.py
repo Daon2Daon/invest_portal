@@ -47,6 +47,12 @@ from app.services.market.quote_service import get_quote
 from app.services.fx.fx_service import get_rate_to_krw
 
 
+async def held_asset_ids(db: AsyncSession) -> set[int]:
+    """holding lot 행이 1개 이상 존재하는 asset_id 집합(보유 판정용)."""
+    rows = await db.execute(select(Holding.asset_id).distinct())
+    return set(rows.scalars().all())
+
+
 async def get_portfolio(db: AsyncSession) -> dict:
     assets = (await db.execute(select(Asset).where(Asset.is_active == True))).scalars().all()  # noqa: E712
     positions = []

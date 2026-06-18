@@ -36,7 +36,9 @@ export default function Watchlist() {
   };
   const remove = async (id: number) => {
     if (!confirm("이 관심종목을 삭제할까요?")) return;
-    await api.deleteAsset(id); await load();
+    try {
+      await api.deleteAsset(id); await load();
+    } catch (e: any) { setMsg("삭제 실패: " + e.message); }
   };
 
   const pct = (n: number | null) =>

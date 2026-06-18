@@ -27,7 +27,7 @@ export default function AssetDetail() {
       if (s) { setSchedTime(s.send_time); setSchedDays(s.days_of_week); setSchedEnabled(s.enabled); }
       else { setSchedTime("08:30"); setSchedDays([0, 1, 2, 3, 4]); setSchedEnabled(false); }
       setSchedMsg("");
-    });
+    }).catch(() => {});
   }, [assetId]);
 
   const send = async () => {

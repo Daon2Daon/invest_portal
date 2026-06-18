@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { PortfolioOut } from "../api";
 
 const krw = (n: number) => n.toLocaleString("ko-KR", { maximumFractionDigits: 0 });
 
 export default function Dashboard() {
+  const nav = useNavigate();
   const [data, setData] = useState<PortfolioOut | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -46,7 +48,8 @@ export default function Dashboard() {
         </tr></thead>
         <tbody>
           {data.positions.map((p) => (
-            <tr key={p.asset_id} className="border-b">
+            <tr key={p.asset_id} className="border-b hover:bg-gray-50 cursor-pointer"
+              onClick={() => nav(`/asset/${p.asset_id}`)}>
               <td className="py-2">{p.name} <span className="text-gray-400">{p.ticker}·{p.market}</span></td>
               <td>{p.asset_class}</td>
               <td>{p.quantity}</td><td>{p.avg_price.toLocaleString()}</td>

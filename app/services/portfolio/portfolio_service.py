@@ -45,6 +45,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Asset, Holding, CashBalance
 from app.services.market.quote_service import get_quote
 from app.services.fx.fx_service import get_rate_to_krw
+from app.schemas.asset import AssetOut
+
+
+async def held_asset_ids(db: AsyncSession) -> set[int]:
+    """holding lot 행이 1개 이상 존재하는 asset_id 집합(보유 판정용)."""
+    rows = await db.execute(select(Holding.asset_id).distinct())
+    return set(rows.scalars().all())
 
 
 async def get_portfolio(db: AsyncSession) -> dict:
@@ -102,4 +109,31 @@ async def get_portfolio(db: AsyncSession) -> dict:
             "total_profit_loss_pct": ((positions_value - total_cost) / total_cost * 100) if total_cost else 0,
             "total_cash_krw": total_cash,
         },
+    }
+
+
+async def get_asset_detail(db: AsyncSession, asset_id: int) -> dict | None:
+    """자산 상세 허브 헤더용 집계. 보유/관심 공통. 없으면 None."""
+    asset = await db.get(Asset, asset_id)
+    if asset is None:
+        return None
+    quote = await get_quote(asset)
+    lots = (await db.execute(
+        select(Holding).where(Holding.asset_id == asset_id)
+    )).scalars().all()
+    summary = None
+    if lots:
+        fx_now = await get_rate_to_krw(db, asset.currency) or 0.0
+        lot_dicts = [dict(quantity=float(l.quantity), purchase_price=float(l.purchase_price),
+                          fee=float(l.fee or 0)) for l in lots]
+        agg = aggregate_position(lot_dicts, current_price=quote.price, fx_now=fx_now)
+        summary = {"quantity": agg["quantity"], "avg_price": agg["avg_price"],
+                   "value_krw": agg["value_krw"], "profit_loss_krw": agg["profit_loss_krw"],
+                   "profit_loss_pct": agg["profit_loss_pct"]}
+    return {
+        "asset": AssetOut.model_validate(asset).model_dump(),
+        "held": bool(lots),
+        "holding_summary": summary,
+        "quote": {"price": quote.price, "currency": quote.currency, "change": quote.change,
+                  "change_pct": quote.change_pct, "status": quote.status},
     }

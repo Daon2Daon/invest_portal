@@ -11,6 +11,7 @@ from app.schemas.market import ResolveRequest, ResolveResponse, ResolvedAssetOut
 from app.schemas.asset import AssetCreate, AssetUpdate, AssetOut, ManualPriceUpdate
 from app.services.market.resolver import AssetResolver
 from app.services.market.quote_service import get_quote
+from app.services.portfolio.portfolio_service import get_asset_detail
 
 router = APIRouter(prefix="/api/assets", tags=["assets"])
 _resolver = AssetResolver()
@@ -66,6 +67,14 @@ async def asset_quote(asset_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "asset not found")
     q = await get_quote(asset)
     return q.__dict__
+
+
+@router.get("/{asset_id}/detail")
+async def asset_detail(asset_id: int, db: AsyncSession = Depends(get_db)):
+    d = await get_asset_detail(db, asset_id)
+    if d is None:
+        raise HTTPException(404, "asset not found")
+    return d
 
 
 @router.put("/{asset_id}/manual-price", response_model=AssetOut)

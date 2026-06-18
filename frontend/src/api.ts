@@ -46,6 +46,10 @@ export const api = {
     j(`/api/charts/${id}/schedule`, { method: "PUT", body: JSON.stringify(s) }),
   deleteSchedule: (id: number) =>
     j(`/api/charts/${id}/schedule`, { method: "DELETE" }),
+  listWatchlist: () => j<WatchlistItem[]>("/api/watchlist"),
+  createWatchlistAsset: (a: any) => j("/api/assets", { method: "POST", body: JSON.stringify(a) }),
+  assetDetail: (id: number) => j<AssetDetailOut>(`/api/assets/${id}/detail`),
+  deleteAsset: (id: number) => j(`/api/assets/${id}`, { method: "DELETE" }),
 };
 
 export interface ResolveResponse {
@@ -75,4 +79,23 @@ export interface PortfolioOut {
   allocation: AllocationSlice[];
   summary: { total_value_krw: number; total_cost_krw: number;
              total_profit_loss_krw: number; total_profit_loss_pct: number; total_cash_krw: number };
+}
+export interface WatchlistItem {
+  asset_id: number; ticker: string; name: string; market: string; currency: string;
+  asset_type: string; asset_class: string | null;
+  current_price: number | null; change: number | null; change_pct: number | null;
+  price_status: string;
+}
+export interface HoldingSummary {
+  quantity: number; avg_price: number; value_krw: number;
+  profit_loss_krw: number; profit_loss_pct: number;
+}
+export interface AssetDetailOut {
+  asset: {
+    asset_id: number; ticker: string; name: string; market: string; currency: string;
+    asset_type: string; asset_class: string | null; data_source: string;
+  };
+  held: boolean;
+  holding_summary: HoldingSummary | null;
+  quote: { price: number; currency: string; change: number | null; change_pct: number | null; status: string };
 }

@@ -53,3 +53,19 @@ async def test_get_watchlist_error_quote_sets_price_none(db_session):
         rows = await get_watchlist(db_session)
     assert rows[0]["current_price"] is None
     assert rows[0]["price_status"] == "error"
+
+
+from httpx import AsyncClient, ASGITransport
+from app.main import app
+
+
+@pytest.mark.asyncio
+async def test_watchlist_endpoint_returns_rows():
+    rows = [{"asset_id": 5, "ticker": "BBB", "name": "B", "market": "US",
+             "currency": "USD", "asset_type": "stock", "asset_class": None,
+             "current_price": 100.0, "change": 1.0, "change_pct": 1.0, "price_status": "ok"}]
+    with patch("app.routers.watchlist.get_watchlist", AsyncMock(return_value=rows)):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as ac:
+            resp = await ac.get("/api/watchlist")
+    assert resp.status_code == 200
+    assert resp.json()[0]["ticker"] == "BBB"

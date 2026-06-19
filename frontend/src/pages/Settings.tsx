@@ -1,6 +1,66 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 
+const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
+
+function MarketSummaryBlock({ market, label }: { market: string; label: string }) {
+  const [time, setTime] = useState("08:30");
+  const [days, setDays] = useState<number[]>([0, 1, 2, 3, 4]);
+  const [enabled, setEnabled] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    api.getMarketSummarySchedule(market).then((s) => {
+      if (s) { setTime(s.send_time); setDays(s.days_of_week); setEnabled(s.enabled); }
+    }).catch(() => {});
+  }, [market]);
+
+  const toggle = (d: number) =>
+    setDays((p) => p.includes(d) ? p.filter((x) => x !== d) : [...p, d].sort());
+  const save = async () => {
+    setMsg("저장 중…");
+    try { await api.saveMarketSummarySchedule(market, { send_time: time, days_of_week: days, enabled }); setMsg("저장됨"); }
+    catch (e: any) { setMsg("저장 실패: " + e.message); }
+  };
+  const remove = async () => {
+    setMsg("삭제 중…");
+    try { await api.deleteMarketSummarySchedule(market); setEnabled(false); setMsg("삭제됨"); }
+    catch (e: any) { setMsg("삭제 실패: " + e.message); }
+  };
+  const sendNow = async () => {
+    setMsg("발송 중…");
+    try { const r = await api.sendMarketSummary(market); setMsg(r.sent ? `발송 완료(지수 ${r.indices}·보유 ${r.holdings}·관심 ${r.watchlist})` : "발송 실패"); }
+    catch (e: any) { setMsg("발송 실패: " + e.message); }
+  };
+
+  return (
+    <div className="border rounded p-3 space-y-2">
+      <div className="font-medium">{label}</div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <label className="text-sm">시각</label>
+        <input type="time" className="border rounded px-2 py-1" value={time} onChange={(e) => setTime(e.target.value)} />
+        <span className="text-xs text-gray-500">(KST)</span>
+      </div>
+      <div className="flex items-center gap-1 flex-wrap">
+        {DAY_LABELS.map((lbl, d) => (
+          <button key={d} type="button" onClick={() => toggle(d)}
+            className={`px-2 py-1 rounded text-sm border ${days.includes(d) ? "bg-blue-600 text-white" : "bg-gray-100"}`}>{lbl}</button>
+        ))}
+      </div>
+      <label className="flex gap-2 items-center text-sm">
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        활성화
+      </label>
+      <div className="flex gap-2 items-center">
+        <button onClick={save} className="px-3 py-1 rounded bg-blue-600 text-white">저장</button>
+        <button onClick={remove} className="px-3 py-1 rounded bg-gray-500 text-white">삭제</button>
+        <button onClick={sendNow} className="px-3 py-1 rounded bg-emerald-600 text-white">지금 발송</button>
+        {msg && <span className="text-sm text-gray-600">{msg}</span>}
+      </div>
+    </div>
+  );
+}
+
 export default function Settings() {
   // 텔레그램
   const [chatId, setChatId] = useState("");
@@ -112,6 +172,12 @@ export default function Settings() {
         </label>
         <button onClick={saveAi} className="px-3 py-1 rounded bg-blue-600 text-white">저장</button>
         {aiMsg && <span className="text-sm text-gray-600 ml-2">{aiMsg}</span>}
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-semibold text-gray-700">증시 마감 요약</h2>
+        <MarketSummaryBlock market="US" label="미국 증시 (US)" />
+        <MarketSummaryBlock market="KR" label="한국 증시 (KR)" />
       </section>
     </div>
   );

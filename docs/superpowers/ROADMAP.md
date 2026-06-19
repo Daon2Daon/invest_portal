@@ -63,7 +63,29 @@
 - 상태: 단위/통합테스트 **86 passed**(신규: schedule_store 4 + dispatcher 7 + charts_schedule 7 + 테이블 1), 프론트 빌드 통과. **실 스케줄 스모크는 사용자 확인 필요(가까운 시각 등록 후 발송 확인).**
 - 비고: 종목당 복수 스케줄·PG 잡스토어·기능별 별도 테이블·자정 catch-up·발송 이력 로그는 YAGNI로 제외.
 
-## 3단계: AI 리포트 + 투자저널 + 위험신호 — **미착수**
+## 2.5단계: 보유/관심 IA + 자산 상세 허브 — **구현 완료 (main 병합됨, 2026-06-18, merge `035b7bf`)**
+- spec: `docs/superpowers/specs/2026-06-18-holding-watchlist-ia-design.md`
+- plan: `docs/superpowers/plans/2026-06-18-holding-watchlist-ia.md`
+- 내용: 보유(포트폴리오)/관심종목을 **파생 분류**(holding lot 유무, 스키마 변경 0)로 구분. 백엔드 `held_asset_ids`·`get_asset_detail`(portfolio_service), `watchlist_service`, `GET /api/watchlist`, `GET /api/assets/{id}/detail`. 프론트 네비 재편(포트폴리오/관심종목/관리/설정), 신규 `Watchlist.tsx`, `Charts.tsx`→`AssetDetail.tsx`(자산별 기능 허브: 차트·AI분석·텔레그램·스케줄, 대시보드/관심종목 행 클릭 진입).
+- 상태: 백엔드 93 테스트 통과(invest_test), 프론트 빌드 통과, 태스크별 spec+품질 2단계 리뷰 + 최종 리뷰 통과.
+- 알려진 minor: `get_asset_detail`은 is_active 미필터(직접 URL로만 도달, 진입점 없음). 수동 브라우저 스모크는 사용자 확인.
+
+## 가격 알림 — **구현 완료 (main 병합됨, 2026-06-18, merge `a7ba1b4`)**
+- spec: `docs/superpowers/specs/2026-06-18-price-alerts-design.md`
+- plan: `docs/superpowers/plans/2026-06-18-price-alerts.md`
+- 내용: 자산별 `(basis, direction, value)` 모델 — ABSOLUTE(절대가)/PURCHASE_AVG(평균매입가±%)/WEEK52_HIGH/LOW(52주 고저점±%). 목표가=기준가×(1±value%), 1회성 발동→재무장. 5분 주기 + 시장 개장(거래일+장중)에만 평가→텔레그램. 신규 `PriceAlert` 모델, `services/alert/`(evaluator·basis(WEEK52 1h캐시)·message·alert_store·alert_dispatcher), `market/market_hours.py`(pandas_market_calendars), `/api/alerts` CRUD+rearm, 스케줄러 5분 `alert_tick` 잡(1분 tick과 별개), 자산 상세 허브 "가격 알림" 섹션.
+- 상태: 백엔드 131 테스트 통과(invest_test), 프론트 빌드 통과, 그룹별 2단계 리뷰 + 최종 리뷰 "Ready".
+- 결정: 반복 변동률(REFERENCE)·전역 알림 페이지·사용자 설정 주기·자동 재무장·텔레그램 외 채널은 비목표. 신규 의존성 `pandas_market_calendars`.
+- 알려진 minor: manual 자산도 market 장중에만 평가; PUT /api/alerts/{id}는 UI 미사용; 퍼센트 value 상한 없음(≥100%면 영구 미발동); 수동 스모크는 사용자 확인.
+
+## 매물대(Volume Profile) 복원 — **구현 완료 (main 병합됨, 2026-06-20, merge `66f442c`)**
+- 내용: 2단계 차트에서 빠졌던 매물대를 복원. `chart_service._volume_profile`(가격대별 누적 거래량) + Panel1 `twiny` barh 오버레이(이평선/볼린저 뒤), `chart_analyzer.DEFAULT_PROMPT`에 매물대 해석 설명 추가(기본 프롬프트만).
+- 상태: 백엔드 135 테스트 통과. 직접(서브에이전트 없이) TDD 구현.
+
+## my-assistant 미이식 잔여 (비교검토 결과)
+- ✅ 가격 알림(완료, 위), ✅ 거래일/장중 체크(가격알림의 market_hours로 충족), ✅ 매물대 패널(완료, 위).
+- ⏳ **증시 마감 요약 푸시** — 주요 지수 + 보유/관심 종목 일/주/월 변동·52주 고점대비를 정해진 시각 텔레그램(기존 schedules/dispatcher 재사용). **다음 작업(사용자 합의).**
+- ⏳ 종목 검색 UX — 자산 등록 시 키워드 검색(KR=pykrx 리스트, US=제한적). 후순위.
 
 ## 3단계: AI 리포트 + 투자저널 + 위험신호 — **미착수**
 - AI 포트폴리오 분석/리포트: ytdb의 분석 파이프라인·litellm 게이트웨이 패턴 참조. 설정은 `app_settings`의 `ai_gateway` 카테고리.

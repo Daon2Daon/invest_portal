@@ -4,6 +4,7 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.services.scheduler.dispatcher import dispatch_tick
+from app.services.alert.alert_dispatcher import evaluate_tick as alert_evaluate_tick
 
 _log = logging.getLogger(__name__)
 _scheduler: AsyncIOScheduler | None = None
@@ -17,8 +18,10 @@ def start_scheduler() -> None:
     _scheduler = AsyncIOScheduler(timezone="Asia/Seoul")
     _scheduler.add_job(dispatch_tick, "interval", minutes=1, id=_TICK_JOB_ID,
                        replace_existing=True, max_instances=1, coalesce=True)
+    _scheduler.add_job(alert_evaluate_tick, "interval", minutes=5, id="alert_tick",
+                       replace_existing=True, max_instances=1, coalesce=True)
     _scheduler.start()
-    _log.info("스케줄러 시작(tick 1분 간격)")
+    _log.info("스케줄러 시작(tick 1분 + 알림 5분)")
 
 
 def shutdown_scheduler() -> None:

@@ -99,3 +99,18 @@ async def test_quote_fetched_once_per_asset():
          patch.object(disp.asyncio, "sleep", AsyncMock()):
         await disp.evaluate_tick()
     assert gq.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_scheduler_registers_alert_tick():
+    from app.services.scheduler import scheduler as sched_mod
+    # 깨끗한 상태에서 시작
+    sched_mod.shutdown_scheduler()
+    sched_mod.start_scheduler()
+    try:
+        s = sched_mod._scheduler
+        ids = {job.id for job in s.get_jobs()}
+        assert "dispatch_tick" in ids
+        assert "alert_tick" in ids
+    finally:
+        sched_mod.shutdown_scheduler()

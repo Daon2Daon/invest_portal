@@ -73,3 +73,33 @@ async def rearm_alert(db: AsyncSession, alert: PriceAlert) -> PriceAlert:
 async def delete_alert(db: AsyncSession, alert: PriceAlert) -> None:
     await db.delete(alert)
     await db.commit()
+
+
+from app.services.market.quote_service import get_quote
+from app.services.alert.basis import resolve_basis_price
+from app.services.alert.evaluator import compute_target, is_fired
+
+
+async def list_alerts_view(db: AsyncSession, asset_id: int) -> list[dict]:
+    """자산의 알림 + 라이브(현재가·목표가·발동여부) 계산. 자산 없으면 빈 리스트."""
+    asset = await db.get(Asset, asset_id)
+    if asset is None:
+        return []
+    alerts = await list_by_asset(db, asset_id)
+    quote = await get_quote(asset)
+    cur = quote.price if quote.status == "ok" else None
+    out: list[dict] = []
+    for a in alerts:
+        bp = await resolve_basis_price(db, asset, a.basis)
+        target = (compute_target(a.basis, a.direction, float(a.value), bp)
+                  if (bp is not None or a.basis == "ABSOLUTE") else None)
+        fired = bool(cur is not None and target is not None
+                     and is_fired(a.direction, cur, target))
+        out.append({
+            "alert_id": a.alert_id, "asset_id": a.asset_id, "basis": a.basis,
+            "direction": a.direction, "value": float(a.value), "enabled": a.enabled,
+            "is_triggered": a.is_triggered, "note": a.note,
+            "target_price": target, "current_price": cur,
+            "price_status": quote.status, "fired": fired,
+        })
+    return out

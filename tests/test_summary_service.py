@@ -49,3 +49,35 @@ async def test_build_and_send_skips_assets_without_stats(db_session):
          patch("app.services.market_summary.summary_service.telegram_service.send_message", AsyncMock(return_value=True)):
         res = await summary_service.build_and_send(db_session, "US")
     assert res["holdings"] == 0 and res["watchlist"] == 0
+
+
+from unittest.mock import MagicMock
+import app.services.scheduler.handlers as handlers
+from app.services.scheduler.schedule_store import FEATURE_SUMMARY_US
+
+
+@pytest.mark.asyncio
+async def test_handler_skips_on_holiday():
+    sched = MagicMock(feature_type=FEATURE_SUMMARY_US)
+    bsend = AsyncMock()
+    with patch.object(handlers, "is_trading_day", return_value=False), \
+         patch.object(handlers.summary_service, "build_and_send", bsend):
+        await handlers.handle_market_summary(MagicMock(), sched)
+    bsend.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_handler_sends_on_trading_day():
+    sched = MagicMock(feature_type=FEATURE_SUMMARY_US)
+    bsend = AsyncMock(return_value={"sent": True})
+    with patch.object(handlers, "is_trading_day", return_value=True), \
+         patch.object(handlers.summary_service, "build_and_send", bsend):
+        await handlers.handle_market_summary(MagicMock(), sched)
+    bsend.assert_awaited_once()
+    assert bsend.await_args.args[1] == "US"
+
+
+def test_handlers_registry_has_market_summary():
+    from app.services.scheduler.schedule_store import FEATURE_SUMMARY_KR
+    assert handlers.HANDLERS[FEATURE_SUMMARY_US] is handlers.handle_market_summary
+    assert handlers.HANDLERS[FEATURE_SUMMARY_KR] is handlers.handle_market_summary

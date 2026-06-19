@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app.db import engine
 from app.bootstrap import ensure_schema
 from app.services.scheduler.scheduler import start_scheduler, shutdown_scheduler
-from app.routers import assets, holdings, portfolio, fx, settings as settings_router, cash, charts, watchlist, alerts
+from app.routers import assets, holdings, portfolio, fx, settings as settings_router, cash, charts, watchlist, alerts, market_summary
 
 STATIC_DIR = Path(__file__).parent / "static"
 UI_DIR = STATIC_DIR / "ui"
@@ -34,7 +34,7 @@ app.add_middleware(
     allow_methods=["*"], allow_headers=["*"],
 )
 
-for r in (assets.router, holdings.router, portfolio.router, fx.router, settings_router.router, cash.router, charts.router, watchlist.router, alerts.router):
+for r in (assets.router, holdings.router, portfolio.router, fx.router, settings_router.router, cash.router, charts.router, watchlist.router, alerts.router, market_summary.router):
     app.include_router(r)
 
 

@@ -84,7 +84,7 @@
 
 ## my-assistant 미이식 잔여 (비교검토 결과)
 - ✅ 가격 알림(완료, 위), ✅ 거래일/장중 체크(가격알림의 market_hours로 충족), ✅ 매물대 패널(완료, 위).
-- ⏳ **증시 마감 요약 푸시** — 주요 지수 + 보유/관심 종목 일/주/월 변동·52주 고점대비를 정해진 시각 텔레그램(기존 schedules/dispatcher 재사용). **다음 작업(사용자 합의).**
+- ✅ **증시 마감 요약 푸시** — **구현 완료 (main 병합됨, 2026-06-20, merge `79e641c`)**. spec/plan: `docs/superpowers/{specs,plans}/2026-06-20-market-summary-push*`. US/KR 시장별(지수+보유+관심 일/주/월·52주), `feature_type=market_summary_us/kr`+target_id=0로 기존 schedules 재사용, `market_hours.is_trading_day` 휴장 스킵, `services/market_summary/`+`routers/market_summary.py`+설정 섹션. 백엔드 155 테스트 통과.
 - ⏳ 종목 검색 UX — 자산 등록 시 키워드 검색(KR=pykrx 리스트, US=제한적). 후순위.
 
 ## 3단계: AI 리포트 + 투자저널 + 위험신호 — **미착수**

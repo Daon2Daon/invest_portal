@@ -59,6 +59,26 @@ def to_weekly(df: pd.DataFrame) -> pd.DataFrame:
     return df.resample("W-FRI").agg(agg).dropna()
 
 
+def _volume_profile(df: pd.DataFrame, bins: int = 50):
+    """가격대별 누적 거래량(매물대)을 계산한다. 각 캔들의 거래량을 그 캔들이 걸치는
+    가격 구간들에 균등 분배한다. (price_centers, volume_profile) 반환, 둘 다 길이 bins-1."""
+    price_min, price_max = float(df["Low"].min()), float(df["High"].max())
+    if price_min >= price_max:
+        price_max = price_min + 1
+    price_bins = np.linspace(price_min, price_max, bins)
+    profile = np.zeros(bins - 1)
+    for _, row in df.iterrows():
+        lo, hi, vol = float(row["Low"]), float(row["High"]), float(row["Volume"])
+        idx = np.where((price_bins[:-1] <= hi) & (price_bins[1:] >= lo))[0]
+        if len(idx) > 0:
+            per = vol / len(idx)
+            for bi in idx:
+                if bi < len(profile):
+                    profile[bi] += per
+    centers = (price_bins[:-1] + price_bins[1:]) / 2
+    return centers, profile
+
+
 def _plot_candles(ax, df, width=0.6):
     for i, (_, row) in enumerate(df.iterrows()):
         o, c, h, l = float(row["Open"]), float(row["Close"]), float(row["High"]), float(row["Low"])
@@ -88,6 +108,15 @@ def generate_ta_chart(df: pd.DataFrame, ticker: str, name: str, timeframe: str) 
         fig.suptitle(f"{name} ({ticker}) - {timeframe} - Technical Analysis",
                      fontsize=14, fontweight="bold")
         _plot_candles(ax1, df)
+        # 매물대(Volume Profile): 이평선/볼린저 뒤에 깔리도록 캔들 직후, twiny 축에 가로막대로.
+        centers, vp = _volume_profile(df)
+        vmax = float(vp.max())
+        if vmax > 0:
+            ax1v = ax1.twiny()
+            h = (centers[1] - centers[0]) * 0.95 if len(centers) > 1 else 1
+            ax1v.barh(centers, vp, height=h, color="orange", alpha=0.12, zorder=0)
+            ax1v.set_xlim(0, vmax)
+            ax1v.set_xticks([])
         ax1.plot(x, df["EMA12"].values, color="red", alpha=0.7, linewidth=1.5, label="EMA 12")
         ax1.plot(x, df["EMA26"].values, color="blue", alpha=0.7, linewidth=1.5, label="EMA 26")
         ax1.plot(x, df["SMA20"].values, color="darkgreen", alpha=0.6, linewidth=1.5, label="SMA 20")

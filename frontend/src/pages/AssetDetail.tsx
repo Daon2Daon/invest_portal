@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
-import type { AssetDetailOut } from "../api";
+import type { AssetDetailOut, AlertView, AlertBasis, AlertDirection } from "../api";
 
 const krw = (n: number) => n.toLocaleString("ko-KR", { maximumFractionDigits: 0 });
 const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -19,6 +19,11 @@ export default function AssetDetail() {
   const [schedDays, setSchedDays] = useState<number[]>([0, 1, 2, 3, 4]);
   const [schedEnabled, setSchedEnabled] = useState(false);
   const [schedMsg, setSchedMsg] = useState("");
+  const [alerts, setAlerts] = useState<AlertView[]>([]);
+  const [aBasis, setABasis] = useState<AlertBasis>("ABSOLUTE");
+  const [aDir, setADir] = useState<AlertDirection>("ABOVE");
+  const [aValue, setAValue] = useState("");
+  const [aMsg, setAMsg] = useState("");
 
   useEffect(() => {
     if (!assetId) return;
@@ -28,6 +33,7 @@ export default function AssetDetail() {
       else { setSchedTime("08:30"); setSchedDays([0, 1, 2, 3, 4]); setSchedEnabled(false); }
       setSchedMsg("");
     }).catch(() => {});
+    api.listAlerts(assetId).then(setAlerts).catch(() => setAlerts([]));
   }, [assetId]);
 
   const send = async () => {
@@ -62,6 +68,34 @@ export default function AssetDetail() {
   };
   const src = (period: "daily" | "weekly") =>
     assetId ? `${api.chartUrl(assetId, period)}&n=${nonce}` : "";
+
+  const BASIS_LABEL: Record<AlertBasis, string> = {
+    ABSOLUTE: "절대 목표가", PURCHASE_AVG: "평균매입가 대비",
+    WEEK52_HIGH: "52주 고점 대비", WEEK52_LOW: "52주 저점 대비",
+  };
+  const isManual = detail?.asset.data_source === "manual";
+  const held = !!detail?.held;
+  const basisDisabled = (b: AlertBasis) =>
+    (b === "PURCHASE_AVG" && !held) || ((b === "WEEK52_HIGH" || b === "WEEK52_LOW") && isManual);
+
+  const reloadAlerts = async () => { if (assetId) setAlerts(await api.listAlerts(assetId)); };
+  const addAlert = async () => {
+    if (!assetId) return;
+    setAMsg("");
+    try {
+      await api.createAlert({ asset_id: assetId, basis: aBasis, direction: aDir, value: Number(aValue) });
+      setAValue(""); await reloadAlerts();
+    } catch (e: any) { setAMsg("추가 실패: " + e.message); }
+  };
+  const rearm = async (id: number) => {
+    try { await api.rearmAlert(id); await reloadAlerts(); }
+    catch (e: any) { setAMsg("재무장 실패: " + e.message); }
+  };
+  const delAlert = async (id: number) => {
+    try { await api.deleteAlert(id); await reloadAlerts(); }
+    catch (e: any) { setAMsg("삭제 실패: " + e.message); }
+  };
+  const valueUnit = aBasis === "ABSOLUTE" ? "가격" : "%";
 
   if (!assetId) return <div className="p-6">잘못된 경로입니다.</div>;
 
@@ -130,6 +164,52 @@ export default function AssetDetail() {
           <button onClick={deleteSched} className="px-3 py-1 rounded bg-gray-500 text-white">삭제</button>
           {schedMsg && <span className="text-sm text-gray-600">{schedMsg}</span>}
         </div>
+      </div>
+
+      <div className="border rounded p-3 bg-white max-w-3xl space-y-3">
+        <h2 className="font-semibold text-gray-700">가격 알림</h2>
+        <div className="flex items-center gap-2 flex-wrap">
+          <select className="border rounded px-2 py-1" value={aBasis}
+            onChange={(e) => setABasis(e.target.value as AlertBasis)}>
+            {(Object.keys(BASIS_LABEL) as AlertBasis[]).map((b) => (
+              <option key={b} value={b} disabled={basisDisabled(b)}>{BASIS_LABEL[b]}</option>
+            ))}
+          </select>
+          <select className="border rounded px-2 py-1" value={aDir}
+            onChange={(e) => setADir(e.target.value as AlertDirection)}>
+            <option value="ABOVE">이상 도달</option>
+            <option value="BELOW">이하 도달</option>
+          </select>
+          <input className="border rounded px-2 py-1 w-28" placeholder={valueUnit}
+            value={aValue} onChange={(e) => setAValue(e.target.value)} />
+          <span className="text-xs text-gray-500">{valueUnit}</span>
+          <button onClick={addAlert} className="px-3 py-1 rounded bg-blue-600 text-white">추가</button>
+          {aMsg && <span className="text-sm text-gray-600">{aMsg}</span>}
+        </div>
+        <table className="w-full text-sm border-collapse">
+          <thead><tr className="border-b text-left text-gray-500">
+            <th className="py-1">기준</th><th>방향</th><th>값</th><th>현재 목표가</th><th>상태</th><th></th>
+          </tr></thead>
+          <tbody>
+            {alerts.map((al) => (
+              <tr key={al.alert_id} className="border-b">
+                <td className="py-1">{BASIS_LABEL[al.basis]}</td>
+                <td>{al.direction === "ABOVE" ? "이상" : "이하"}</td>
+                <td>{al.value}{al.basis === "ABSOLUTE" ? "" : "%"}</td>
+                <td>{al.target_price == null ? "—" : al.target_price.toLocaleString()}</td>
+                <td>{al.is_triggered
+                  ? <span className="text-gray-500">발동됨</span>
+                  : <span className="text-emerald-600">활성</span>}</td>
+                <td className="whitespace-nowrap">
+                  {al.is_triggered && (
+                    <button onClick={() => rearm(al.alert_id)} className="text-blue-600 mr-2">재무장</button>
+                  )}
+                  <button onClick={() => delAlert(al.alert_id)} className="text-red-600">삭제</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <div className="space-y-6">

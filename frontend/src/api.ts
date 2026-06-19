@@ -54,6 +54,14 @@ export const api = {
   createAlert: (a: AlertCreate) => j("/api/alerts", { method: "POST", body: JSON.stringify(a) }),
   rearmAlert: (id: number) => j(`/api/alerts/${id}/rearm`, { method: "POST" }),
   deleteAlert: (id: number) => j(`/api/alerts/${id}`, { method: "DELETE" }),
+  getMarketSummarySchedule: (m: string) =>
+    j<{ send_time: string; days_of_week: number[]; enabled: boolean } | null>(`/api/market-summary/${m}/schedule`),
+  saveMarketSummarySchedule: (m: string, s: { send_time: string; days_of_week: number[]; enabled: boolean }) =>
+    j(`/api/market-summary/${m}/schedule`, { method: "PUT", body: JSON.stringify(s) }),
+  deleteMarketSummarySchedule: (m: string) =>
+    j(`/api/market-summary/${m}/schedule`, { method: "DELETE" }),
+  sendMarketSummary: (m: string) =>
+    j<{ market: string; sent: boolean; indices: number; holdings: number; watchlist: number }>(`/api/market-summary/${m}/send`, { method: "POST" }),
 };
 
 export interface ResolveResponse {

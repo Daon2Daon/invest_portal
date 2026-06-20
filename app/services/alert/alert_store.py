@@ -77,22 +77,28 @@ async def delete_alert(db: AsyncSession, alert: PriceAlert) -> None:
 
 from app.services.market.quote_service import get_quote
 from app.services.alert.basis import resolve_basis_price
-from app.services.alert.evaluator import compute_target, is_fired
+from app.services.alert.evaluator import compute_target, is_fired, ref_fired
 
 
 async def _alert_row(db: AsyncSession, asset: Asset, a: PriceAlert, cur: float | None,
                      price_status: str) -> dict:
     """단일 알림 + 라이브(목표가·발동여부) 계산. cur는 자산 현재가(없으면 None)."""
-    bp = await resolve_basis_price(db, asset, a.basis)
-    target = (compute_target(a.basis, a.direction, float(a.value), bp)
-              if (bp is not None or a.basis == "ABSOLUTE") else None)
-    fired = bool(cur is not None and target is not None
-                 and is_fired(a.direction, cur, target))
+    ref = float(a.reference_price) if a.reference_price is not None else None
+    if a.basis == "REFERENCE":
+        target = None
+        fired = bool(cur is not None and ref is not None
+                     and ref_fired(ref, cur, float(a.value)))
+    else:
+        bp = await resolve_basis_price(db, asset, a.basis)
+        target = (compute_target(a.basis, a.direction, float(a.value), bp)
+                  if (bp is not None or a.basis == "ABSOLUTE") else None)
+        fired = bool(cur is not None and target is not None
+                     and is_fired(a.direction, cur, target))
     return {
         "alert_id": a.alert_id, "asset_id": a.asset_id, "basis": a.basis,
         "direction": a.direction, "value": float(a.value), "enabled": a.enabled,
         "is_triggered": a.is_triggered, "note": a.note,
-        "target_price": target, "current_price": cur,
+        "target_price": target, "reference_price": ref, "current_price": cur,
         "price_status": price_status, "fired": fired,
     }
 

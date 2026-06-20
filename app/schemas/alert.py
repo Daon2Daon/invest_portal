@@ -1,8 +1,8 @@
 from typing import Literal
 from pydantic import BaseModel, field_validator
 
-Basis = Literal["ABSOLUTE", "PURCHASE_AVG", "WEEK52_HIGH", "WEEK52_LOW"]
-Direction = Literal["ABOVE", "BELOW"]
+Basis = Literal["ABSOLUTE", "PURCHASE_AVG", "WEEK52_HIGH", "WEEK52_LOW", "REFERENCE"]
+Direction = Literal["ABOVE", "BELOW", "BOTH"]
 
 
 class AlertCreate(BaseModel):
@@ -40,6 +40,7 @@ class AlertOut(BaseModel):
     basis: str
     direction: str
     value: float
+    reference_price: float | None = None
     enabled: bool
     is_triggered: bool
     note: str | None = None

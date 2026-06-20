@@ -19,8 +19,9 @@ async def create(body: AlertCreate, db: AsyncSession = Depends(get_db)):
         raise HTTPException(422, "보유 종목에만 평균매입가 기준 알림을 설정할 수 있습니다.")
     if body.basis in ("WEEK52_HIGH", "WEEK52_LOW") and asset.data_source == "manual":
         raise HTTPException(422, "수동(manual) 자산은 52주 기준 알림을 설정할 수 없습니다.")
+    direction = "BOTH" if body.basis == "REFERENCE" else body.direction
     return await alert_store.create_alert(
-        db, body.asset_id, body.basis, body.direction, body.value, body.note)
+        db, body.asset_id, body.basis, direction, body.value, body.note)
 
 
 @router.get("")
@@ -36,10 +37,13 @@ async def update(alert_id: int, body: AlertUpdate, db: AsyncSession = Depends(ge
     if alert is None:
         raise HTTPException(404, "alert not found")
     data = body.model_dump(exclude_unset=True)
+    direction = data.get("direction")
+    if alert.basis == "REFERENCE" and direction is not None:
+        direction = "BOTH"   # REFERENCE는 양방향 고정 — 방향 변경 무시
     return await alert_store.update_alert(
         db, alert,
         value=data.get("value"),
-        direction=data.get("direction"),
+        direction=direction,
         note=(data["note"] if "note" in data else alert_store._UNSET),
         enabled=data.get("enabled"),
     )

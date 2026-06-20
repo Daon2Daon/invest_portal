@@ -15,3 +15,11 @@ def is_fired(direction: str, current_price: float, target_price: float) -> bool:
     if direction == "ABOVE":
         return current_price >= target_price
     return current_price <= target_price
+
+
+def ref_fired(reference_price: float, current_price: float, value: float) -> bool:
+    """기준가 대비 |변동률| >= value(%) 이면 True. 양방향, 경계 포함."""
+    if reference_price <= 0:
+        return False
+    change_pct = abs((current_price - reference_price) / reference_price) * 100.0
+    return change_pct >= value

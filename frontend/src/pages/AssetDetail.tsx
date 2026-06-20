@@ -162,9 +162,11 @@ export default function AssetDetail() {
             {alerts.map((al) => (
               <tr key={al.alert_id} className="border-b border-border">
                 <td className="py-1">{BASIS_LABEL[al.basis]}</td>
-                <td>{al.direction === "ABOVE" ? "이상" : "이하"}</td>
-                <td>{al.value}{al.basis === "ABSOLUTE" ? "" : "%"}</td>
-                <td>{al.target_price == null ? "—" : al.target_price.toLocaleString()}</td>
+                <td>{al.basis === "REFERENCE" ? `±${al.value}%` : (al.direction === "ABOVE" ? "이상" : "이하")}</td>
+                <td>{al.basis === "REFERENCE" ? "—" : <>{al.value}{al.basis === "ABSOLUTE" ? "" : "%"}</>}</td>
+                <td>{al.basis === "REFERENCE"
+                  ? (al.reference_price == null ? "산정 중" : `${al.reference_price.toLocaleString()} ±${al.value}%`)
+                  : (al.target_price == null ? "—" : al.target_price.toLocaleString())}</td>
                 <td>{al.is_triggered
                   ? <span className="text-muted">발동됨</span>
                   : <span className="text-up">활성</span>}</td>

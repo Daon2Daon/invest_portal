@@ -5,6 +5,7 @@ import type { AlertBasis, AlertDirection } from "../api";
 export const BASIS_LABEL: Record<AlertBasis, string> = {
   ABSOLUTE: "절대 목표가", PURCHASE_AVG: "평균매입가 대비",
   WEEK52_HIGH: "52주 고점 대비", WEEK52_LOW: "52주 저점 대비",
+  REFERENCE: "변동률 감시",
 };
 
 export interface AssetOpt { asset_id: number; label: string; held: boolean; manual: boolean; }
@@ -40,12 +41,16 @@ export default function AlertForm({ options, fixed, onAdded }: Props) {
     if (cur && basisDisabled(basis, cur.held, cur.manual)) setBasis("ABSOLUTE");
   }, [cur?.asset_id]);
 
-  const unit = basis === "ABSOLUTE" ? "가격" : "%";
+  const unit = basis === "ABSOLUTE" ? "가격" : basis === "REFERENCE" ? "변동 %" : "%";
   const add = async () => {
     if (!cur) { setMsg("종목을 선택하세요"); return; }
     setMsg("");
     try {
-      await api.createAlert({ asset_id: cur.asset_id, basis, direction: dir, value: Number(value) });
+      await api.createAlert({
+        asset_id: cur.asset_id, basis,
+        direction: basis === "REFERENCE" ? "BOTH" : dir,
+        value: Number(value),
+      });
       setValue(""); onAdded();
     } catch (e: any) { setMsg("추가 실패: " + e.message); }
   };
@@ -65,10 +70,12 @@ export default function AlertForm({ options, fixed, onAdded }: Props) {
             disabled={!!cur && basisDisabled(b, cur.held, cur.manual)}>{BASIS_LABEL[b]}</option>
         ))}
       </select>
-      <select className="input" value={dir} onChange={(e) => setDir(e.target.value as AlertDirection)}>
-        <option value="ABOVE">이상 도달</option>
-        <option value="BELOW">이하 도달</option>
-      </select>
+      {basis !== "REFERENCE" && (
+        <select className="input" value={dir} onChange={(e) => setDir(e.target.value as AlertDirection)}>
+          <option value="ABOVE">이상 도달</option>
+          <option value="BELOW">이하 도달</option>
+        </select>
+      )}
       <input className="input w-28" placeholder={unit} value={value}
         onChange={(e) => setValue(e.target.value)} />
       <span className="text-xs text-muted">{unit}</span>

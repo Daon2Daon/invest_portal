@@ -102,3 +102,27 @@ async def test_list_all_alerts_view_groups_and_enriches(db_session, monkeypatch)
     # 자산 메타 포함
     assert {r["asset_name"] for r in rows} == {"에이", "비"}
     assert all("ticker" in r and "target_price" in r for r in rows)
+
+
+@pytest.mark.asyncio
+async def test_alert_row_reference_includes_reference_price(db_session):
+    a = _asset(ticker="REF", fetch_symbol="REF")
+    db_session.add(a); await db_session.commit()
+    alert = PriceAlert(asset_id=a.asset_id, basis="REFERENCE", direction="BOTH", value=5.0)
+    alert.reference_price = 100.0
+    db_session.add(alert); await db_session.commit()
+    row = await alert_store._alert_row(db_session, a, alert, 106.0, "ok")
+    assert row["reference_price"] == 100.0
+    assert row["target_price"] is None
+    assert row["fired"] is True            # |6%| >= 5%
+
+
+@pytest.mark.asyncio
+async def test_alert_row_non_reference_reference_price_none(db_session):
+    a = _asset(ticker="NREF", fetch_symbol="NREF")
+    db_session.add(a); await db_session.commit()
+    alert = PriceAlert(asset_id=a.asset_id, basis="ABSOLUTE", direction="ABOVE", value=200.0)
+    db_session.add(alert); await db_session.commit()
+    row = await alert_store._alert_row(db_session, a, alert, 150.0, "ok")
+    assert row["reference_price"] is None
+    assert row["target_price"] == 200.0

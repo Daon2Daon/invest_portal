@@ -7,8 +7,8 @@ from zoneinfo import ZoneInfo
 from app.db import SessionLocal
 from app.services.alert import alert_store
 from app.services.alert.basis import resolve_basis_price
-from app.services.alert.evaluator import compute_target, is_fired
-from app.services.alert.message import build_message
+from app.services.alert.evaluator import compute_target, is_fired, ref_fired
+from app.services.alert.message import build_message, build_reference_message
 from app.services.market.market_hours import is_market_open
 from app.services.market.quote_service import get_quote
 from app.services.notification import telegram_service
@@ -38,23 +38,37 @@ async def evaluate_tick() -> None:
                 continue
             for alert in alerts:
                 try:
-                    basis_price = await resolve_basis_price(db, asset, alert.basis)
-                    if basis_price is None and alert.basis != "ABSOLUTE":
-                        continue
-                    target = compute_target(alert.basis, alert.direction, float(alert.value), basis_price)
-                    if not is_fired(alert.direction, quote.price, target):
-                        continue
-                    msg = build_message(asset, alert, quote.price, target)
+                    is_reference = alert.basis == "REFERENCE"
+                    if is_reference:
+                        if alert.reference_price is None:
+                            alert.reference_price = quote.price
+                            await db.commit()
+                            continue
+                        if not ref_fired(float(alert.reference_price), quote.price, float(alert.value)):
+                            continue
+                        msg = build_reference_message(asset, alert, quote.price, float(alert.reference_price))
+                    else:
+                        basis_price = await resolve_basis_price(db, asset, alert.basis)
+                        if basis_price is None and alert.basis != "ABSOLUTE":
+                            continue
+                        target = compute_target(alert.basis, alert.direction, float(alert.value), basis_price)
+                        if not is_fired(alert.direction, quote.price, target):
+                            continue
+                        msg = build_message(asset, alert, quote.price, target)
                     try:
                         ok = await telegram_service.send_message(db, msg)
                     except telegram_service.TelegramNotConfigured:
                         _log.info("텔레그램 미설정 — 알림 발송 생략")
                         return
                     if ok:
-                        alert.enabled = False
-                        alert.is_triggered = True
-                        alert.triggered_at = now
-                        alert.last_notified_at = now
+                        if is_reference:
+                            alert.reference_price = quote.price
+                            alert.last_notified_at = now
+                        else:
+                            alert.enabled = False
+                            alert.is_triggered = True
+                            alert.triggered_at = now
+                            alert.last_notified_at = now
                         await db.commit()
                     await asyncio.sleep(2)   # 텔레그램 rate-limit 여유
                 except Exception as e:   # noqa: BLE001 — 한 건 실패가 나머지를 막지 않게

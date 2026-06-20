@@ -66,17 +66,23 @@ export default function Alerts() {
                   {r.asset_name} <span className="text-muted">{r.ticker}·{r.market}</span>
                 </td>
                 <td>{BASIS_LABEL[r.basis]}</td>
-                <td>{r.direction === "ABOVE" ? "이상" : "이하"}{r.basis === "ABSOLUTE" ? "" : ` ${r.value}%`}</td>
-                <td>{r.target_price == null ? "—" : r.target_price.toLocaleString()}</td>
+                <td>{r.basis === "REFERENCE"
+                  ? `±${r.value}%`
+                  : <>{r.direction === "ABOVE" ? "이상" : "이하"}{r.basis === "ABSOLUTE" ? "" : ` ${r.value}%`}</>}</td>
+                <td>{r.basis === "REFERENCE"
+                  ? (r.reference_price == null ? "산정 중" : `${r.reference_price.toLocaleString()} ±${r.value}%`)
+                  : (r.target_price == null ? "—" : r.target_price.toLocaleString())}</td>
                 <td>{r.current_price == null ? "—" : r.current_price.toLocaleString()}</td>
                 <td>
-                  {r.is_triggered ? <span className="text-muted">발동됨</span>
-                    : r.fired ? <span className="badge">도달</span>
+                  {r.basis !== "REFERENCE" && r.is_triggered
+                    ? <span className="text-muted">발동됨</span>
+                    : r.basis !== "REFERENCE" && r.fired
+                    ? <span className="badge">도달</span>
                     : r.enabled ? <span className="text-up">활성</span>
                     : <span className="text-muted">꺼짐</span>}
                 </td>
                 <td className="whitespace-nowrap">
-                  {r.is_triggered
+                  {r.basis !== "REFERENCE" && r.is_triggered
                     ? <button onClick={() => rearm(r.alert_id)} className="text-accent mr-2">재무장</button>
                     : <button onClick={() => toggle(r)} className="text-accent mr-2">{r.enabled ? "끄기" : "켜기"}</button>}
                   <button onClick={() => del(r.alert_id)} className="text-up">삭제</button>

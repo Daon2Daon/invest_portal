@@ -114,15 +114,16 @@ export interface AssetDetailOut {
   holding_summary: HoldingSummary | null;
   quote: { price: number; currency: string; change: number | null; change_pct: number | null; status: string };
 }
-export type AlertBasis = "ABSOLUTE" | "PURCHASE_AVG" | "WEEK52_HIGH" | "WEEK52_LOW";
-export type AlertDirection = "ABOVE" | "BELOW";
+export type AlertBasis = "ABSOLUTE" | "PURCHASE_AVG" | "WEEK52_HIGH" | "WEEK52_LOW" | "REFERENCE";
+export type AlertDirection = "ABOVE" | "BELOW" | "BOTH";
 export interface AlertCreate {
   asset_id: number; basis: AlertBasis; direction: AlertDirection; value: number; note?: string | null;
 }
 export interface AlertView {
   alert_id: number; asset_id: number; basis: AlertBasis; direction: AlertDirection;
   value: number; enabled: boolean; is_triggered: boolean; note: string | null;
-  target_price: number | null; current_price: number | null; price_status: string; fired: boolean;
+  target_price: number | null; reference_price: number | null;
+  current_price: number | null; price_status: string; fired: boolean;
 }
 export interface AlertRow extends AlertView {
   asset_name: string; ticker: string; market: string; asset_class: string | null;

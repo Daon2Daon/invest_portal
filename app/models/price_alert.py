@@ -10,9 +10,10 @@ class PriceAlert(Base):
     alert_id: Mapped[int] = mapped_column(primary_key=True)
     asset_id: Mapped[int] = mapped_column(
         ForeignKey("assets.asset_id", ondelete="CASCADE"), nullable=False, index=True)
-    basis: Mapped[str] = mapped_column(String, nullable=False)       # ABSOLUTE/PURCHASE_AVG/WEEK52_HIGH/WEEK52_LOW
-    direction: Mapped[str] = mapped_column(String, nullable=False)   # ABOVE/BELOW
+    basis: Mapped[str] = mapped_column(String, nullable=False)       # ABSOLUTE/PURCHASE_AVG/WEEK52_HIGH/WEEK52_LOW/REFERENCE
+    direction: Mapped[str] = mapped_column(String, nullable=False)   # ABOVE/BELOW/BOTH(REFERENCE)
     value: Mapped[float] = mapped_column(Numeric, nullable=False)
+    reference_price: Mapped[float | None] = mapped_column(Numeric)   # REFERENCE 트레일링 기준가
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_triggered: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     triggered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

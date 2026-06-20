@@ -9,7 +9,6 @@ const ASSET_TYPES = [
   { code: "etf", label: "ETF" }, { code: "bond", label: "채권 (수동가격)" },
   { code: "commodity", label: "원자재" }, { code: "crypto", label: "가상자산" },
 ];
-const inp = "border rounded px-2 py-1";
 
 export default function Watchlist() {
   const nav = useNavigate();
@@ -42,48 +41,48 @@ export default function Watchlist() {
   };
 
   const pct = (n: number | null) =>
-    n == null ? "—" : <span className={n >= 0 ? "text-red-600" : "text-blue-600"}>{n >= 0 ? "+" : ""}{n.toFixed(2)}%</span>;
+    n == null ? "—" : <span className={n >= 0 ? "text-up" : "text-down"}>{n >= 0 ? "+" : ""}{n.toFixed(2)}%</span>;
 
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-xl font-bold">관심종목</h1>
 
       <section className="space-y-2">
-        <h2 className="font-semibold text-gray-700">관심종목 추가</h2>
+        <h2 className="font-semibold text-muted">관심종목 추가</h2>
         <div className="flex gap-2 items-center flex-wrap">
-          <input className={inp} placeholder="티커 (AAPL, 005930, BTC, GC=F)"
+          <input className="input" placeholder="티커 (AAPL, 005930, BTC, GC=F)"
             value={ticker} onChange={(e) => setTicker(e.target.value)} />
-          <select className={inp} value={market} onChange={(e) => setMarket(e.target.value)}>
+          <select className="input" value={market} onChange={(e) => setMarket(e.target.value)}>
             {MARKETS.map((m) => <option key={m}>{m}</option>)}
           </select>
-          <select className={inp} value={assetType} onChange={(e) => setAssetType(e.target.value)}>
+          <select className="input" value={assetType} onChange={(e) => setAssetType(e.target.value)}>
             {ASSET_TYPES.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
           </select>
-          <button onClick={doResolve} className="px-3 py-1 rounded bg-gray-800 text-white">조회</button>
-          {msg && <span className="text-sm text-gray-600">{msg}</span>}
+          <button onClick={doResolve} className="btn">조회</button>
+          {msg && <span className="text-sm text-muted">{msg}</span>}
         </div>
         {preview && (preview.ok && preview.asset ? (
-          <div className="rounded border p-3 bg-green-50 flex items-center gap-3 flex-wrap">
+          <div className="rounded border border-border p-3 bg-green-50 flex items-center gap-3 flex-wrap">
             <div><b>{preview.asset.name}</b> · {preview.asset.currency} · {preview.asset.asset_type} · 현재가 {preview.asset.current_price ?? "—"}</div>
-            <button onClick={addWatch} className="px-3 py-1 rounded bg-blue-600 text-white">관심 추가</button>
+            <button onClick={addWatch} className="btn btn-primary">관심 추가</button>
           </div>
         ) : (
-          <div className="rounded border p-3 bg-amber-50">
+          <div className="rounded border border-border p-3 bg-amber-50">
             <div>조회 실패 (시도: {preview.tried.join(", ")})</div>
-            <div className="text-sm text-gray-600">{preview.suggestion}</div>
+            <div className="text-sm text-muted">{preview.suggestion}</div>
           </div>
         ))}
       </section>
 
       <table className="w-full text-sm border-collapse">
-        <thead><tr className="border-b text-left text-gray-500">
+        <thead><tr className="border-b border-border text-left text-muted">
           <th className="py-2">종목</th><th>현재가</th><th>변화</th><th>자산군</th><th></th>
         </tr></thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.asset_id} className="border-b hover:bg-gray-50 cursor-pointer"
+            <tr key={r.asset_id} className="border-b border-border hover:bg-surface-2 cursor-pointer"
               onClick={() => nav(`/asset/${r.asset_id}`)}>
-              <td className="py-2">{r.name} <span className="text-gray-400">{r.ticker}·{r.market}</span></td>
+              <td className="py-2">{r.name} <span className="text-muted">{r.ticker}·{r.market}</span></td>
               <td>{r.current_price == null
                 ? <span className="text-amber-600">⚠{r.price_status}</span>
                 : r.current_price.toLocaleString()}</td>

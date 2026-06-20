@@ -51,6 +51,9 @@ export const api = {
   assetDetail: (id: number) => j<AssetDetailOut>(`/api/assets/${id}/detail`),
   deleteAsset: (id: number) => j(`/api/assets/${id}`, { method: "DELETE" }),
   listAlerts: (assetId: number) => j<AlertView[]>(`/api/alerts?asset_id=${assetId}`),
+  listAllAlerts: () => j<AlertRow[]>("/api/alerts"),
+  updateAlert: (id: number, a: { value?: number; direction?: AlertDirection; enabled?: boolean }) =>
+    j(`/api/alerts/${id}`, { method: "PUT", body: JSON.stringify(a) }),
   createAlert: (a: AlertCreate) => j("/api/alerts", { method: "POST", body: JSON.stringify(a) }),
   rearmAlert: (id: number) => j(`/api/alerts/${id}/rearm`, { method: "POST" }),
   deleteAlert: (id: number) => j(`/api/alerts/${id}`, { method: "DELETE" }),
@@ -120,4 +123,7 @@ export interface AlertView {
   alert_id: number; asset_id: number; basis: AlertBasis; direction: AlertDirection;
   value: number; enabled: boolean; is_triggered: boolean; note: string | null;
   target_price: number | null; current_price: number | null; price_status: string; fired: boolean;
+}
+export interface AlertRow extends AlertView {
+  asset_name: string; ticker: string; market: string; asset_class: string | null;
 }

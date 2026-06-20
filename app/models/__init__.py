@@ -7,6 +7,7 @@ from app.models.cash_balance import CashBalance
 from app.models.schedule import Schedule
 from app.models.price_alert import PriceAlert
 from app.models.portfolio_snapshot import PortfolioSnapshot
+from app.models.ai_report import AIReport
 
 __all__ = ["Asset", "ExchangeRate", "PriceSnapshot", "Holding", "AppSetting",
-           "CashBalance", "Schedule", "PriceAlert", "PortfolioSnapshot"]
+           "CashBalance", "Schedule", "PriceAlert", "PortfolioSnapshot", "AIReport"]

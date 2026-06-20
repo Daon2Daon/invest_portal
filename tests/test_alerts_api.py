@@ -109,3 +109,28 @@ async def test_list_all_uses_all_view():
             resp = await ac.get("/api/alerts")
     assert resp.status_code == 200
     assert resp.json()[0]["asset_name"] == "에이"
+
+
+@pytest.mark.asyncio
+async def test_create_reference_normalizes_direction_to_both():
+    asset = MagicMock(data_source="yfinance")
+    created = _real_alert()
+    created.basis = "REFERENCE"
+    created.direction = "BOTH"
+    with patch("app.db.AsyncSession.get", AsyncMock(return_value=asset)), \
+         patch("app.routers.alerts.alert_store.create_alert", AsyncMock(return_value=created)) as ca:
+        async with await _client() as ac:
+            resp = await ac.post("/api/alerts", json={
+                "asset_id": 1, "basis": "REFERENCE", "direction": "ABOVE", "value": 5})
+    assert resp.status_code == 200
+    assert resp.json()["basis"] == "REFERENCE"
+    # 라우터가 REFERENCE면 store에 direction="BOTH"로 전달(요청의 ABOVE 무시)
+    assert ca.await_args.args[3] == "BOTH"
+
+
+@pytest.mark.asyncio
+async def test_create_reference_rejects_nonpositive_value():
+    async with await _client() as ac:
+        resp = await ac.post("/api/alerts", json={
+            "asset_id": 1, "basis": "REFERENCE", "direction": "BOTH", "value": 0})
+    assert resp.status_code == 422

@@ -77,7 +77,6 @@ async def test_list_active_with_assets_filters(db_session):
 
 @pytest.mark.asyncio
 async def test_list_all_alerts_view_groups_and_enriches(db_session, monkeypatch):
-    from app.services.market.quote_service import get_quote  # noqa: F401 (참조 경로 확인용)
     a1 = _asset(ticker="ALLA", name="에이", fetch_symbol="ALLA")
     a2 = _asset(ticker="ALLB", name="비", fetch_symbol="ALLB")
     inactive = _asset(ticker="ALLC", fetch_symbol="ALLC", is_active=False)

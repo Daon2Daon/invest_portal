@@ -1,5 +1,7 @@
+import pytest
 from datetime import date
 from app.services.snapshot.snapshot_service import build_snapshot_row
+from app.services.snapshot import snapshot_service, snapshot_store
 
 
 def test_build_snapshot_row_maps_summary_and_allocation():
@@ -26,3 +28,13 @@ def test_build_snapshot_row_maps_summary_and_allocation():
         {"asset_class": "주식", "value_krw": 900.0},
         {"asset_class": "현금성", "value_krw": 300.0},
     ]
+
+
+@pytest.mark.asyncio
+async def test_capture_daily_snapshot_empty_portfolio(db_session):
+    snap = await snapshot_service.capture_daily_snapshot(db_session)
+    assert snap.id is not None
+    assert float(snap.total_value_krw) == 0
+    rows = await snapshot_store.list_snapshots(db_session, None)
+    assert len(rows) == 1
+    assert rows[0].date == snap.date

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { AlertBasis, AlertDirection } from "../api";
 
@@ -35,6 +35,10 @@ export default function AlertForm({ options, fixed, onAdded }: Props) {
       : selectedOpt
         ? { asset_id: selectedOpt.asset_id, held: selectedOpt.held, manual: selectedOpt.manual }
         : undefined;
+
+  useEffect(() => {
+    if (cur && basisDisabled(basis, cur.held, cur.manual)) setBasis("ABSOLUTE");
+  }, [cur?.asset_id]);
 
   const unit = basis === "ABSOLUTE" ? "가격" : "%";
   const add = async () => {

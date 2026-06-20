@@ -95,3 +95,17 @@ async def test_delete_404_when_missing():
         async with await _client() as ac:
             resp = await ac.delete("/api/alerts/99")
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_list_all_uses_all_view():
+    rows = [{"alert_id": 1, "asset_id": 1, "basis": "ABSOLUTE", "direction": "ABOVE",
+             "value": 250.0, "enabled": True, "is_triggered": False, "note": None,
+             "target_price": 250.0, "current_price": 251.0, "price_status": "ok",
+             "fired": True, "asset_name": "에이", "ticker": "AAA", "market": "US",
+             "asset_class": "주식"}]
+    with patch("app.routers.alerts.list_all_alerts_view", AsyncMock(return_value=rows)):
+        async with await _client() as ac:
+            resp = await ac.get("/api/alerts")
+    assert resp.status_code == 200
+    assert resp.json()[0]["asset_name"] == "에이"

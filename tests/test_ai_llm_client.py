@@ -98,3 +98,36 @@ async def test_list_models_parses_ids():
     args, kwargs = client.get.call_args
     assert args[0] == "http://gw/v1/models"
     assert kwargs["headers"] == {"Authorization": "Bearer K"}
+
+
+@pytest.mark.asyncio
+async def test_generate_text_builds_gemini_request():
+    resp = MagicMock(status_code=200)
+    resp.json = MagicMock(return_value={"candidates": [{"content": {"parts": [{"text": "리포트본문"}]}}]})
+    cm, client = _mock_client(resp)
+    with patch("app.services.ai.llm_client.httpx.AsyncClient", return_value=cm):
+        out = await lc.generate_text(
+            base_url="http://gw", api_key="K", model="gemini/gemini-2.5-flash",
+            prompt="프롬프트", temperature=0.5, max_output_tokens=4000)
+    assert out == "리포트본문"
+    args, kwargs = client.post.call_args
+    assert args[0] == "http://gw/gemini/v1beta/models/gemini-2.5-flash:generateContent"
+    assert kwargs["params"] == {"key": "K"}
+    parts = kwargs["json"]["contents"][0]["parts"]
+    assert parts[0]["text"] == "프롬프트"
+    assert kwargs["json"]["generationConfig"]["maxOutputTokens"] == 4000
+
+
+@pytest.mark.asyncio
+async def test_generate_text_non200_raises():
+    resp = MagicMock(status_code=500, text="boom")
+    cm, _ = _mock_client(resp)
+    with patch("app.services.ai.llm_client.httpx.AsyncClient", return_value=cm):
+        with pytest.raises(lc.LiteLLMError):
+            await lc.generate_text(base_url="http://gw", api_key="K", model="m", prompt="p")
+
+
+@pytest.mark.asyncio
+async def test_generate_text_missing_base_url_raises():
+    with pytest.raises(lc.LiteLLMError):
+        await lc.generate_text(base_url="", api_key="K", model="m", prompt="p")

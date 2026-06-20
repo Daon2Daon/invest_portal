@@ -77,6 +77,38 @@ async def analyze_images(base_url: str, api_key: str, model: str,
     return text
 
 
+async def generate_text(base_url: str, api_key: str, model: str, prompt: str,
+                        temperature: float | None = None,
+                        max_output_tokens: int | None = None) -> str:
+    """텍스트 프롬프트 → Gemini generateContent 텍스트 응답. 실패 시 LiteLLMError."""
+    base = _normalize_base_url(base_url)
+    if not base:
+        raise LiteLLMError("AI Gateway base_url이 비어 있습니다.")
+    if not api_key:
+        raise LiteLLMError("AI Gateway api_key가 비어 있습니다.")
+    model_id = model.split("/")[-1] if "/" in model else model
+    url = f"{base}/gemini/v1beta/models/{model_id}:generateContent"
+    body: dict = {"contents": [{"role": "user", "parts": [{"text": prompt}]}]}
+    gen_cfg: dict = {}
+    if temperature is not None:
+        gen_cfg["temperature"] = temperature
+    if max_output_tokens is not None:
+        gen_cfg["maxOutputTokens"] = max_output_tokens
+    if gen_cfg:
+        body["generationConfig"] = gen_cfg
+    try:
+        async with httpx.AsyncClient(timeout=_GEMINI_TIMEOUT) as client:
+            resp = await client.post(url, params={"key": api_key}, json=body)
+            if resp.status_code != 200:
+                raise LiteLLMError(f"Gemini 텍스트 생성 실패: {resp.status_code} - {resp.text}")
+            text = _pick_text_from_gemini(resp.json())
+    except httpx.RequestError as e:
+        raise LiteLLMError(f"AI Gateway 연결 실패: {e}") from e
+    if not text:
+        raise LiteLLMError("Gemini 응답에서 텍스트를 찾지 못했습니다.")
+    return text
+
+
 async def list_models(base_url: str, api_key: str) -> list[str]:
     """게이트웨이 /v1/models의 id 목록. 실패 시 LiteLLMError."""
     base = _normalize_base_url(base_url)

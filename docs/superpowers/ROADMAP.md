@@ -113,7 +113,7 @@
 - 상태: 백엔드 **177 테스트 통과**(invest_test, 신규 7), 프론트 빌드·tsc 통과. 서브에이전트 주도 TDD + 최종 홀리스틱 리뷰(Critical/Important 0, merge 권장).
 - DB: 신규 테이블이라 ensure_schema가 부팅 시 자동 생성(ALTER 불필요).
 - 비목표(YAGNI): 과거 백필, 자산군 스택차트, 시각 설정 UI, 발송/알림 연동, 종목별 추세.
-- **남은 스모크(사용자 확인 대기)**: 실 적재 1회(가까운 시각 cron 또는 `snapshot_tick` 1회 실행)→대시보드 "자산 추세" 카드·`GET /api/trend` 확인. 적재 전엔 스냅샷 <2개라 안내문구 정상.
+- **스모크 완료(2026-06-20)**: 실 DB(`invest`)에 오늘 스냅샷 1건 적재 검증 — 총자산 ~10.0억/평가손익 +4.1억/현금 1.0억, allocation(주식·채권·현금성) JSONB 정상, `GET /api/trend` 로직(period_to_since+list_snapshots) 반환 정상, date upsert 멱등(재실행 1건 유지). 스냅샷 1건이라 TrendChart 안내문구("스냅샷이 충분히 쌓이면…") 정상 노출, 추세 라인은 익일 06:30 cron 2건째부터.
 
 ### 3단계 B/C/D — **미착수**
 - B AI 포트폴리오 리포트: ytdb 분석 파이프라인·게이트웨이 패턴 참조. 설정은 `app_settings`의 `ai_gateway`. 스냅샷(추세) 활용.

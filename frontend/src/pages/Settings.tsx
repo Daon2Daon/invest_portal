@@ -34,17 +34,17 @@ function MarketSummaryBlock({ market, label }: { market: string; label: string }
   };
 
   return (
-    <div className="border rounded p-3 space-y-2">
+    <div className="card space-y-2">
       <div className="font-medium">{label}</div>
       <div className="flex items-center gap-2 flex-wrap">
         <label className="text-sm">시각</label>
-        <input type="time" className="border rounded px-2 py-1" value={time} onChange={(e) => setTime(e.target.value)} />
-        <span className="text-xs text-gray-500">(KST)</span>
+        <input type="time" className="input" value={time} onChange={(e) => setTime(e.target.value)} />
+        <span className="text-xs text-muted">(KST)</span>
       </div>
       <div className="flex items-center gap-1 flex-wrap">
         {DAY_LABELS.map((lbl, d) => (
           <button key={d} type="button" onClick={() => toggle(d)}
-            className={`px-2 py-1 rounded text-sm border ${days.includes(d) ? "bg-blue-600 text-white" : "bg-gray-100"}`}>{lbl}</button>
+            className={days.includes(d) ? "btn btn-primary" : "btn"}>{lbl}</button>
         ))}
       </div>
       <label className="flex gap-2 items-center text-sm">
@@ -52,10 +52,10 @@ function MarketSummaryBlock({ market, label }: { market: string; label: string }
         활성화
       </label>
       <div className="flex gap-2 items-center">
-        <button onClick={save} className="px-3 py-1 rounded bg-blue-600 text-white">저장</button>
-        <button onClick={remove} className="px-3 py-1 rounded bg-gray-500 text-white">삭제</button>
-        <button onClick={sendNow} className="px-3 py-1 rounded bg-emerald-600 text-white">지금 발송</button>
-        {msg && <span className="text-sm text-gray-600">{msg}</span>}
+        <button onClick={save} className="btn btn-primary">저장</button>
+        <button onClick={remove} className="btn">삭제</button>
+        <button onClick={sendNow} className="btn">지금 발송</button>
+        {msg && <span className="text-sm text-muted">{msg}</span>}
       </div>
     </div>
   );
@@ -118,64 +118,64 @@ export default function Settings() {
       <h1 className="text-xl font-bold">설정</h1>
 
       <section className="space-y-2">
-        <h2 className="font-semibold text-gray-700">텔레그램</h2>
+        <h2 className="font-semibold text-muted">텔레그램</h2>
         <div className="flex gap-2 items-center">
           <label className="w-28 text-sm">봇 토큰</label>
-          <input className="border rounded px-2 py-1 flex-1" type="password"
+          <input className="input flex-1" type="password"
             placeholder={tokenSet ? "설정됨 (변경 시에만 입력)" : "봇 토큰 입력"}
             value={token} onChange={(e) => setToken(e.target.value)} />
         </div>
         <div className="flex gap-2 items-center">
           <label className="w-28 text-sm">chat_id</label>
-          <input className="border rounded px-2 py-1 flex-1" placeholder="chat_id"
+          <input className="input flex-1" placeholder="chat_id"
             value={chatId} onChange={(e) => setChatId(e.target.value)} />
         </div>
-        <button onClick={saveTg} className="px-3 py-1 rounded bg-blue-600 text-white">저장</button>
-        {tgMsg && <span className="text-sm text-gray-600 ml-2">{tgMsg}</span>}
+        <button onClick={saveTg} className="btn btn-primary">저장</button>
+        {tgMsg && <span className="text-sm text-muted ml-2">{tgMsg}</span>}
       </section>
 
       <section className="space-y-2">
-        <h2 className="font-semibold text-gray-700">AI 분석</h2>
+        <h2 className="font-semibold text-muted">AI 분석</h2>
         <div className="flex gap-2 items-center">
           <label className="w-28 text-sm">게이트웨이 URL</label>
-          <input className="border rounded px-2 py-1 flex-1" placeholder="http://gateway:4000"
+          <input className="input flex-1" placeholder="http://gateway:4000"
             value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
         </div>
         <div className="flex gap-2 items-center">
           <label className="w-28 text-sm">API 키</label>
-          <input className="border rounded px-2 py-1 flex-1" type="password"
+          <input className="input flex-1" type="password"
             placeholder={apiKeySet ? "설정됨 (변경 시에만 입력)" : "API 키 입력"}
             value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
         </div>
         <div className="flex gap-2 items-center">
           <label className="w-28 text-sm">모델</label>
           {models.length > 0 ? (
-            <select className="border rounded px-2 py-1 flex-1" value={model}
+            <select className="input flex-1" value={model}
               onChange={(e) => setModel(e.target.value)}>
               {!models.includes(model) && model && <option value={model}>{model}</option>}
               {models.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           ) : (
-            <input className="border rounded px-2 py-1 flex-1" placeholder="gemini/gemini-2.5-flash"
+            <input className="input flex-1" placeholder="gemini/gemini-2.5-flash"
               value={model} onChange={(e) => setModel(e.target.value)} />
           )}
-          <button onClick={refreshModels} className="px-2 py-1 rounded bg-gray-700 text-white text-sm whitespace-nowrap">모델 새로고침</button>
+          <button onClick={refreshModels} className="btn text-sm whitespace-nowrap">모델 새로고침</button>
         </div>
         <div>
           <label className="text-sm block mb-1">프롬프트 (비우면 기본 프롬프트 사용)</label>
-          <textarea className="border rounded px-2 py-1 w-full h-40 text-sm font-mono"
+          <textarea className="input w-full h-40 text-sm font-mono"
             value={prompt} onChange={(e) => setPrompt(e.target.value)} />
         </div>
         <label className="flex gap-2 items-center text-sm">
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
           AI 분석 사용 (텔레그램 발송 시 분석 코멘트 동반)
         </label>
-        <button onClick={saveAi} className="px-3 py-1 rounded bg-blue-600 text-white">저장</button>
-        {aiMsg && <span className="text-sm text-gray-600 ml-2">{aiMsg}</span>}
+        <button onClick={saveAi} className="btn btn-primary">저장</button>
+        {aiMsg && <span className="text-sm text-muted ml-2">{aiMsg}</span>}
       </section>
 
       <section className="space-y-2">
-        <h2 className="font-semibold text-gray-700">증시 마감 요약</h2>
+        <h2 className="font-semibold text-muted">증시 마감 요약</h2>
         <MarketSummaryBlock market="US" label="미국 증시 (US)" />
         <MarketSummaryBlock market="KR" label="한국 증시 (KR)" />
       </section>

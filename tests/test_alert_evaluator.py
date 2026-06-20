@@ -1,4 +1,4 @@
-from app.services.alert.evaluator import compute_target, is_fired
+from app.services.alert.evaluator import compute_target, is_fired, ref_fired
 
 
 def test_absolute_ignores_basis_price():
@@ -30,3 +30,17 @@ def test_is_fired_above_boundary_inclusive():
 def test_is_fired_below_boundary_inclusive():
     assert is_fired("BELOW", 100.0, 100.0) is True
     assert is_fired("BELOW", 100.1, 100.0) is False
+
+
+def test_ref_fired_up_threshold():
+    assert ref_fired(100.0, 105.0, 5.0) is True     # +5% 경계 도달
+    assert ref_fired(100.0, 104.9, 5.0) is False
+
+
+def test_ref_fired_down_threshold():
+    assert ref_fired(100.0, 95.0, 5.0) is True       # -5% 경계 도달(양방향)
+    assert ref_fired(100.0, 96.0, 5.0) is False
+
+
+def test_ref_fired_zero_reference_guard():
+    assert ref_fired(0.0, 100.0, 5.0) is False

@@ -5,6 +5,7 @@ _BASIS_LABEL = {
     "PURCHASE_AVG": "평균매입가 대비",
     "WEEK52_HIGH": "52주 고점 대비",
     "WEEK52_LOW": "52주 저점 대비",
+    "REFERENCE": "변동률 감시",
 }
 
 
@@ -27,4 +28,15 @@ def build_message(asset, alert, current_price: float, target_price: float) -> st
         f"🔔 <b>{asset.name}</b> ({asset.ticker}·{asset.market})\n"
         f"조건: {cond}\n"
         f"현재가 {_fmt(current_price, asset.currency)} {arrow} 목표 {_fmt(target_price, asset.currency)}"
+    )
+
+
+def build_reference_message(asset, alert, current_price: float, reference_price: float) -> str:
+    change_pct = (current_price - reference_price) / reference_price * 100.0
+    direction = "상승" if change_pct >= 0 else "하락"
+    return (
+        f"🔔 <b>{asset.name}</b> ({asset.ticker}·{asset.market})\n"
+        f"조건: {_BASIS_LABEL['REFERENCE']} ±{float(alert.value):g}%\n"
+        f"급격한 {direction}! 기준가 {_fmt(reference_price, asset.currency)} → "
+        f"현재가 {_fmt(current_price, asset.currency)} ({change_pct:+.2f}%)"
     )

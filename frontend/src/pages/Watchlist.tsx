@@ -82,7 +82,8 @@ export default function Watchlist() {
         ))}
       </section>
 
-      <table className="w-full text-sm border-collapse">
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm border-collapse whitespace-nowrap">
         <thead><tr className="border-b border-border text-left text-muted">
           <th className="py-2">종목</th><th>현재가</th><th>변화</th><th>자산군</th><th></th>
         </tr></thead>
@@ -108,6 +109,7 @@ export default function Watchlist() {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

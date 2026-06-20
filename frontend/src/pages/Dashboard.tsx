@@ -33,7 +33,7 @@ export default function Dashboard() {
           {loading ? "갱신 중…" : "새로고침"}
         </button>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="card">
           <div className="text-sm text-muted">총자산 (KRW)</div>
           <div className="text-2xl font-semibold">₩{krw(s.total_value_krw)}</div>
@@ -49,7 +49,8 @@ export default function Dashboard() {
           <div className="text-2xl font-semibold">₩{krw(s.total_cash_krw)}</div>
         </div>
       </div>
-      <table className="w-full text-sm border-collapse">
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm border-collapse whitespace-nowrap">
         <thead><tr className="border-b border-border text-left text-muted">
           <th className="py-2">종목</th><th>자산군</th><th>수량</th><th>평단</th><th>현재가</th>
           <th>평가액(KRW)</th><th>손익</th><th>비중</th><th></th>
@@ -76,10 +77,12 @@ export default function Dashboard() {
           ))}
         </tbody>
       </table>
+      </div>
       {data.cash.length > 0 && (
         <div>
           <h2 className="font-semibold mb-2">현금</h2>
-          <table className="w-full text-sm border-collapse">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse whitespace-nowrap">
             <thead><tr className="border-b border-border text-left text-muted">
               <th className="py-2">통화</th><th>금액</th><th>라벨</th><th>평가액(KRW)</th><th>비중</th>
             </tr></thead>
@@ -92,12 +95,14 @@ export default function Dashboard() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
       {data.allocation.length > 0 && (
         <div>
           <h2 className="font-semibold mb-2">자산군별 비중</h2>
-          <table className="w-full text-sm border-collapse">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse whitespace-nowrap">
             <thead><tr className="border-b border-border text-left text-muted">
               <th className="py-2">자산군</th><th>평가액(KRW)</th><th>비중</th>
             </tr></thead>
@@ -109,6 +114,7 @@ export default function Dashboard() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

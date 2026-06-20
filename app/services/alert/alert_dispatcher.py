@@ -38,7 +38,8 @@ async def evaluate_tick() -> None:
                 continue
             for alert in alerts:
                 try:
-                    if alert.basis == "REFERENCE":
+                    is_reference = alert.basis == "REFERENCE"
+                    if is_reference:
                         if alert.reference_price is None:
                             alert.reference_price = quote.price
                             await db.commit()
@@ -60,7 +61,7 @@ async def evaluate_tick() -> None:
                         _log.info("텔레그램 미설정 — 알림 발송 생략")
                         return
                     if ok:
-                        if alert.basis == "REFERENCE":
+                        if is_reference:
                             alert.reference_price = quote.price
                             alert.last_notified_at = now
                         else:

@@ -4,9 +4,9 @@ import { currentTheme, setTheme } from "../theme";
 
 const NAV = [
   { to: "/", label: "포트폴리오", end: true },
+  { to: "/manage", label: "보유종목" },
   { to: "/watchlist", label: "관심종목" },
   { to: "/alerts", label: "알림" },
-  { to: "/manage", label: "관리" },
   { to: "/settings", label: "설정" },
 ];
 

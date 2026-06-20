@@ -70,12 +70,12 @@ export default function Watchlist() {
           {msg && <span className="text-sm text-muted">{msg}</span>}
         </div>
         {preview && (preview.ok && preview.asset ? (
-          <div className="rounded border border-border p-3 bg-green-50 flex items-center gap-3 flex-wrap">
+          <div className="rounded border border-border p-3 bg-ok-bg flex items-center gap-3 flex-wrap">
             <div><b>{preview.asset.name}</b> · {preview.asset.currency} · {preview.asset.asset_type} · 현재가 {preview.asset.current_price ?? "—"}</div>
             <button onClick={addWatch} className="btn btn-primary">관심 추가</button>
           </div>
         ) : (
-          <div className="rounded border border-border p-3 bg-amber-50">
+          <div className="rounded border border-border p-3 bg-warn-bg">
             <div>조회 실패 (시도: {preview.tried.join(", ")})</div>
             <div className="text-sm text-muted">{preview.suggestion}</div>
           </div>
@@ -102,7 +102,7 @@ export default function Watchlist() {
               <td>{pct(r.change_pct)}</td>
               <td>{r.asset_class ?? "—"}</td>
               <td className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                <button onClick={() => remove(r.asset_id)} className="text-red-600">삭제</button>
+                <button onClick={() => remove(r.asset_id)} className="text-up">삭제</button>
               </td>
             </tr>
           ))}

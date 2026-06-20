@@ -14,6 +14,7 @@
   --accent-fg: #ffffff;
   --up: #e5484d;   /* 상승 = 빨강 (KR 관례) */
   --down: #3b82f6; /* 하락 = 파랑 */
+  --ok-bg: #ecfdf5; --ok-text: #047857; --warn-bg: #fffbeb; --warn-text: #b45309;
 }
 
 :root[data-theme="dark"] {
@@ -27,6 +28,7 @@
   --accent-fg: #15151a;
   --up: #ef5350;
   --down: #5b9dff;
+  --ok-bg: #0e2a22; --ok-text: #6ee7b7; --warn-bg: #2a2310; --warn-text: #fcd34d;
 }
 
 html, body, #root {

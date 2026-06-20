@@ -9,6 +9,7 @@ export default function Alerts() {
   const [rows, setRows] = useState<AlertRow[]>([]);
   const [opts, setOpts] = useState<AssetOpt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState("");
 
   const loadRows = async () => setRows(await api.listAllAlerts());
   const loadOpts = async () => {
@@ -26,14 +27,26 @@ export default function Alerts() {
     (async () => { try { await Promise.all([loadRows(), loadOpts()]); } finally { setLoading(false); } })();
   }, []);
 
-  const toggle = async (r: AlertRow) => { await api.updateAlert(r.alert_id, { enabled: !r.enabled }); await loadRows(); };
-  const rearm = async (id: number) => { await api.rearmAlert(id); await loadRows(); };
-  const del = async (id: number) => { await api.deleteAlert(id); await loadRows(); };
+  const toggle = async (r: AlertRow) => {
+    try { await api.updateAlert(r.alert_id, { enabled: !r.enabled }); await loadRows(); setMsg(""); }
+    catch (e: any) { setMsg("작업 실패: " + e.message); }
+  };
+  const rearm = async (id: number) => {
+    try { await api.rearmAlert(id); await loadRows(); setMsg(""); }
+    catch (e: any) { setMsg("작업 실패: " + e.message); }
+  };
+  const del = async (id: number) => {
+    try { await api.deleteAlert(id); await loadRows(); setMsg(""); }
+    catch (e: any) { setMsg("작업 실패: " + e.message); }
+  };
 
   if (loading) return <div className="p-6">불러오는 중…</div>;
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-xl font-bold">알림</h1>
+      <div className="flex items-center gap-3">
+        <h1 className="text-xl font-bold">알림</h1>
+        {msg && <span className="text-sm text-muted">{msg}</span>}
+      </div>
       <div className="card space-y-2">
         <h2 className="font-semibold">알림 추가</h2>
         <AlertForm options={opts} onAdded={loadRows} />
@@ -57,6 +70,7 @@ export default function Alerts() {
                 <td>{r.current_price == null ? "—" : r.current_price.toLocaleString()}</td>
                 <td>
                   {r.is_triggered ? <span className="text-muted">발동됨</span>
+                    : r.fired ? <span className="badge">도달</span>
                     : r.enabled ? <span className="text-up">활성</span>
                     : <span className="text-muted">꺼짐</span>}
                 </td>

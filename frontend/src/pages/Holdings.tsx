@@ -101,7 +101,7 @@ export default function Holdings() {
             <button onClick={doResolve} className="btn">조회</button>
           </div>
           {preview && (preview.ok && preview.asset ? (
-            <div className="rounded border border-border p-3 bg-green-50 space-y-2">
+            <div className="rounded border border-border p-3 bg-ok-bg space-y-2">
               <div><b>{preview.asset.name}</b> · {preview.asset.currency} · {preview.asset.asset_type} · 현재가 {preview.asset.current_price ?? "—"}</div>
               <div className="flex gap-2 flex-wrap">
                 <input className="input w-24" placeholder="수량"
@@ -121,7 +121,7 @@ export default function Holdings() {
               <div className="text-xs text-muted">같은 티커를 다시 추가하면 기존 자산에 분할매수로 쌓입니다.</div>
             </div>
           ) : (
-            <div className="rounded border border-border p-3 bg-amber-50">
+            <div className="rounded border border-border p-3 bg-warn-bg">
               <div>조회 실패 (시도: {preview.tried.join(", ")})</div>
               <div className="text-sm text-muted">{preview.suggestion}</div>
             </div>
@@ -183,7 +183,7 @@ export default function Holdings() {
                       <td>{h.fee}</td><td>{h.memo ?? "—"}</td>
                       <td className="whitespace-nowrap">
                         <button onClick={() => startEditH(h)} className="text-accent mr-2">수정</button>
-                        <button onClick={() => removeH(h.holding_id)} className="text-red-600">삭제</button>
+                        <button onClick={() => removeH(h.holding_id)} className="text-up">삭제</button>
                       </td>
                     </>
                   )}
@@ -226,7 +226,7 @@ export default function Holdings() {
                       <td>{c.label ?? "—"}</td>
                       <td className="whitespace-nowrap">
                         <button onClick={() => startEditC(c)} className="text-accent mr-2">수정</button>
-                        <button onClick={() => removeC(c.id)} className="text-red-600">삭제</button>
+                        <button onClick={() => removeC(c.id)} className="text-up">삭제</button>
                       </td>
                     </>
                   )}

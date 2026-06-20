@@ -172,7 +172,7 @@ export default function Holdings() {
                       <td><input className="input w-28" value={editH.memo}
                         onChange={(e) => setEditH({ ...editH, memo: e.target.value })} /></td>
                       <td className="whitespace-nowrap">
-                        <button onClick={() => saveH(h)} className="text-blue-600 mr-2">저장</button>
+                        <button onClick={() => saveH(h)} className="text-accent mr-2">저장</button>
                         <button onClick={() => setEditHid(null)} className="text-muted">취소</button>
                       </td>
                     </>
@@ -182,7 +182,7 @@ export default function Holdings() {
                       <td>{h.purchase_date ?? "—"}</td><td>{h.quantity}</td><td>{h.purchase_price}</td>
                       <td>{h.fee}</td><td>{h.memo ?? "—"}</td>
                       <td className="whitespace-nowrap">
-                        <button onClick={() => startEditH(h)} className="text-gray-700 mr-2">수정</button>
+                        <button onClick={() => startEditH(h)} className="text-accent mr-2">수정</button>
                         <button onClick={() => removeH(h.holding_id)} className="text-red-600">삭제</button>
                       </td>
                     </>
@@ -216,7 +216,7 @@ export default function Holdings() {
                       <td><input className="input" value={editC.label}
                         onChange={(e) => setEditC({ ...editC, label: e.target.value })} /></td>
                       <td className="whitespace-nowrap">
-                        <button onClick={saveC} className="text-blue-600 mr-2">저장</button>
+                        <button onClick={saveC} className="text-accent mr-2">저장</button>
                         <button onClick={() => setEditCid(null)} className="text-muted">취소</button>
                       </td>
                     </>
@@ -225,7 +225,7 @@ export default function Holdings() {
                       <td className="py-2">{c.currency}</td><td>{Number(c.amount).toLocaleString()}</td>
                       <td>{c.label ?? "—"}</td>
                       <td className="whitespace-nowrap">
-                        <button onClick={() => startEditC(c)} className="text-gray-700 mr-2">수정</button>
+                        <button onClick={() => startEditC(c)} className="text-accent mr-2">수정</button>
                         <button onClick={() => removeC(c.id)} className="text-red-600">삭제</button>
                       </td>
                     </>

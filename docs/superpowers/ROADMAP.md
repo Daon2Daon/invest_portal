@@ -92,8 +92,15 @@
 - 상태: 백엔드 **157 테스트 통과**(invest_test), 프론트 빌드 통과. 서브에이전트 주도 개발(태스크별 spec+품질 2단계 리뷰 + 최종 홀리스틱 리뷰). **수동 브라우저 스모크는 사용자 확인 대기**(테마 토글·반응형·알림 추가/관리 흐름).
 - 비고(YAGNI 제외): 알림 발송 이력, 종목 검색 자동완성, 커스텀 테마색 UI, matplotlib 차트 다크모드, 허브에서의 값/방향 수정.
 
+## 변동성(REFERENCE) 알림 — **구현 완료 (main 병합됨, 2026-06-20, merge `97caa8a`)**
+- spec: `docs/superpowers/specs/2026-06-20-volatility-reference-alert-design.md`, plan: `docs/superpowers/plans/2026-06-20-volatility-reference-alert.md`
+- 내용: my_assistant의 `PERCENT_CHANGE`(트레일링 반복 변동률) 이식. 기존 `PriceAlert`에 `REFERENCE` 기준 + `reference_price` 컬럼 추가. 양방향 `|변동률|≥X%` 발동(첫 tick lazy-init→미발동, 발동 시 텔레그램 발송 후 기준가를 현재가로 재설정해 계속 감시, `is_triggered` 불변). 5분 tick·장중 게이팅·텔레그램·알림 허브·배지 전부 재사용. `evaluator.ref_fired`(순수), `message.build_reference_message`, 디스패처 `is_reference` 분기, `_alert_row`에 reference_price, 라우터 `direction="BOTH"` 정규화(POST·PUT). 프론트: AlertForm "변동률 감시" 옵션(방향 드롭다운 숨김, 라벨 "변동 %"), 허브/AssetDetail 테이블 `±X%`·`기준가 ±X%`/`산정 중` 밴드 표시.
+- 상태: 백엔드 **170 테스트 통과**(invest_test, 신규 13), 프론트 빌드·tsc 통과. 서브에이전트 주도 개발(태스크별 spec+품질 2단계 리뷰 + 최종 홀리스틱 리뷰). **브라우저 스모크 확인**(폼 방향숨김·밴드·산정중·재무장 없음·DB 원복).
+- DB 마이그레이션: `ALTER TABLE invest.price_alerts ADD COLUMN IF NOT EXISTS reference_price NUMERIC`(dev DB 적용 완료). ensure_schema는 신규 DB 자동 생성.
+- 비목표(YAGNI): 시간창 기반(전일종가/N분) 변동, 발송 이력/쿨다운, 절대금액 변동, REFERENCE 값 편집 UI.
+
 ## my-assistant 미이식 잔여 (비교검토 결과)
-- ✅ 가격 알림(완료, 위), ✅ 거래일/장중 체크(가격알림의 market_hours로 충족), ✅ 매물대 패널(완료, 위).
+- ✅ 가격 알림(완료, 위), ✅ 거래일/장중 체크(가격알림의 market_hours로 충족), ✅ 매물대 패널(완료, 위), ✅ **변동성(REFERENCE) 알림**(완료, 바로 위 — PERCENT_CHANGE 이식).
 - ✅ **증시 마감 요약 푸시** — **구현 완료 (main 병합됨, 2026-06-20, merge `79e641c`)**. spec/plan: `docs/superpowers/{specs,plans}/2026-06-20-market-summary-push*`. US/KR 시장별(지수+보유+관심 일/주/월·52주), `feature_type=market_summary_us/kr`+target_id=0로 기존 schedules 재사용, `market_hours.is_trading_day` 휴장 스킵, `services/market_summary/`+`routers/market_summary.py`+설정 섹션. 백엔드 155 테스트 통과.
 - ⏳ 종목 검색 UX — 자산 등록 시 키워드 검색(KR=pykrx 리스트, US=제한적). 후순위.
 

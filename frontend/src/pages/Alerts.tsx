@@ -82,7 +82,7 @@ export default function Alerts() {
                     : <span className="text-muted">꺼짐</span>}
                 </td>
                 <td className="whitespace-nowrap">
-                  {r.is_triggered
+                  {r.basis !== "REFERENCE" && r.is_triggered
                     ? <button onClick={() => rearm(r.alert_id)} className="text-accent mr-2">재무장</button>
                     : <button onClick={() => toggle(r)} className="text-accent mr-2">{r.enabled ? "끄기" : "켜기"}</button>}
                   <button onClick={() => del(r.alert_id)} className="text-up">삭제</button>

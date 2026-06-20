@@ -54,7 +54,8 @@ export default function Alerts() {
       {rows.length === 0 ? (
         <p className="text-muted text-sm">설정된 알림이 없습니다. 위에서 추가하거나 종목 상세에서 설정하세요.</p>
       ) : (
-        <table className="w-full text-sm border-collapse">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse whitespace-nowrap">
           <thead><tr className="border-b border-border text-left text-muted">
             <th className="py-2">종목</th><th>기준</th><th>방향</th><th>목표가</th><th>현재가</th><th>상태</th><th></th>
           </tr></thead>
@@ -65,7 +66,7 @@ export default function Alerts() {
                   {r.asset_name} <span className="text-muted">{r.ticker}·{r.market}</span>
                 </td>
                 <td>{BASIS_LABEL[r.basis]}</td>
-                <td>{r.direction === "ABOVE" ? "이상" : "이하"} {r.value}{r.basis === "ABSOLUTE" ? "" : "%"}</td>
+                <td>{r.direction === "ABOVE" ? "이상" : "이하"}{r.basis === "ABSOLUTE" ? "" : ` ${r.value}%`}</td>
                 <td>{r.target_price == null ? "—" : r.target_price.toLocaleString()}</td>
                 <td>{r.current_price == null ? "—" : r.current_price.toLocaleString()}</td>
                 <td>
@@ -84,6 +85,7 @@ export default function Alerts() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

@@ -153,7 +153,8 @@ export default function AssetDetail() {
           onAdded={reloadAlerts}
         />
         {aMsg && <span className="text-sm text-muted">{aMsg}</span>}
-        <table className="w-full text-sm border-collapse">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse whitespace-nowrap">
           <thead><tr className="border-b border-border text-left text-muted">
             <th className="py-1">기준</th><th>방향</th><th>값</th><th>현재 목표가</th><th>상태</th><th></th>
           </tr></thead>
@@ -177,6 +178,7 @@ export default function AssetDetail() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       <div className="space-y-6">

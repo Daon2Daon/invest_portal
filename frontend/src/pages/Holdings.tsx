@@ -146,7 +146,8 @@ export default function Holdings() {
 
       <section>
         <h2 className="font-semibold mb-2">보유 종목</h2>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm whitespace-nowrap">
           <thead><tr className="border-b border-border text-left text-muted">
             <th className="py-2">종목</th><th>자산군</th><th>매입일</th><th>수량</th><th>단가</th><th>수수료</th><th>메모</th><th></th>
           </tr></thead>
@@ -192,11 +193,13 @@ export default function Holdings() {
             })}
           </tbody>
         </table>
+        </div>
       </section>
 
       <section>
         <h2 className="font-semibold mb-2">현금</h2>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm whitespace-nowrap">
           <thead><tr className="border-b border-border text-left text-muted">
             <th className="py-2">통화</th><th>금액</th><th>라벨</th><th></th>
           </tr></thead>
@@ -235,6 +238,7 @@ export default function Holdings() {
             })}
           </tbody>
         </table>
+        </div>
       </section>
     </div>
   );

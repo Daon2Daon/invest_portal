@@ -104,11 +104,21 @@
 - ✅ **증시 마감 요약 푸시** — **구현 완료 (main 병합됨, 2026-06-20, merge `79e641c`)**. spec/plan: `docs/superpowers/{specs,plans}/2026-06-20-market-summary-push*`. US/KR 시장별(지수+보유+관심 일/주/월·52주), `feature_type=market_summary_us/kr`+target_id=0로 기존 schedules 재사용, `market_hours.is_trading_day` 휴장 스킵, `services/market_summary/`+`routers/market_summary.py`+설정 섹션. 백엔드 155 테스트 통과.
 - ⏳ 종목 검색 UX — 자산 등록 시 키워드 검색(KR=pykrx 리스트, US=제한적). 후순위.
 
-## 3단계: AI 리포트 + 투자저널 + 위험신호 — **미착수**
-- AI 포트폴리오 분석/리포트: ytdb의 분석 파이프라인·litellm 게이트웨이 패턴 참조. 설정은 `app_settings`의 `ai_gateway` 카테고리.
-- 투자저널: 기존 테스트 DB `portfolio_plans`(context_date/summary/key_events/decisions/results/notes) 구조 재설계해 도입.
-- 위험신호·매수매도 도움: 보유 자산의 기술적 지표·비중 편향 기반 알림.
-- 일별 자산추세 스냅샷 테이블 추가(1단계에서 연기한 것).
+## 3단계: AI 리포트 + 투자저널 + 위험신호 — **진행 중(A 완료)**
+3단계는 4개 독립 하위 시스템으로 분해해 각각 spec→plan→구현 사이클로 진행. 순서: A(스냅샷, 토대)→B/C/D.
+
+### 3단계 A: 일별 자산추세 스냅샷 — **구현 완료 (2026-06-20)**
+- spec: `docs/superpowers/specs/2026-06-20-daily-portfolio-snapshot-design.md`, plan: `docs/superpowers/plans/2026-06-20-daily-portfolio-snapshot.md`
+- 내용: 신규 `portfolio_snapshots` 테이블(date unique, total_value/cost/pl/cash_krw + allocation JSONB, 기존 미사용 `PriceSnapshot`과 별개). `get_portfolio()` 결과를 매일 KST 06:30 고정 cron(`snapshot_tick`, scheduler.py `id=daily_snapshot`)으로 date-멱등 upsert. 신규 `services/snapshot/`(`build_snapshot_row` 순수함수·`capture_daily_snapshot`·`snapshot_store` upsert/list), `routers/trend.py`(`GET /api/trend?period=1M|3M|6M|1Y|ALL`, `period_to_since` 폴백 1M). 프론트 신규 `components/TrendChart.tsx`(의존성 0 자체 SVG 총자산 라인+기간토글+`<title>` 툴팁), 대시보드 요약 아래 배치.
+- 상태: 백엔드 **177 테스트 통과**(invest_test, 신규 7), 프론트 빌드·tsc 통과. 서브에이전트 주도 TDD + 최종 홀리스틱 리뷰(Critical/Important 0, merge 권장).
+- DB: 신규 테이블이라 ensure_schema가 부팅 시 자동 생성(ALTER 불필요).
+- 비목표(YAGNI): 과거 백필, 자산군 스택차트, 시각 설정 UI, 발송/알림 연동, 종목별 추세.
+- **남은 스모크(사용자 확인 대기)**: 실 적재 1회(가까운 시각 cron 또는 `snapshot_tick` 1회 실행)→대시보드 "자산 추세" 카드·`GET /api/trend` 확인. 적재 전엔 스냅샷 <2개라 안내문구 정상.
+
+### 3단계 B/C/D — **미착수**
+- B AI 포트폴리오 리포트: ytdb 분석 파이프라인·게이트웨이 패턴 참조. 설정은 `app_settings`의 `ai_gateway`. 스냅샷(추세) 활용.
+- C 위험신호·매수매도 도움: 보유 자산 기술적 지표·비중 편향 기반 알림(기존 alert/scheduler 확장).
+- D 투자저널: 기존 테스트 DB `portfolio_plans`(context_date/summary/key_events/decisions/results/notes) 구조 재설계해 도입.
 
 ## 후속: 포털 통합
 - ytdb와 하나의 로그인 베이스 포털(invest/work/personal 메뉴)로 통합.

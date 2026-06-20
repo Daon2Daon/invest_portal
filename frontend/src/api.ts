@@ -52,6 +52,7 @@ export const api = {
   deleteAsset: (id: number) => j(`/api/assets/${id}`, { method: "DELETE" }),
   listAlerts: (assetId: number) => j<AlertView[]>(`/api/alerts?asset_id=${assetId}`),
   listAllAlerts: () => j<AlertRow[]>("/api/alerts"),
+  getTrend: (period: string) => j<TrendPoint[]>(`/api/trend?period=${period}`),
   updateAlert: (id: number, a: { value?: number; direction?: AlertDirection; enabled?: boolean }) =>
     j(`/api/alerts/${id}`, { method: "PUT", body: JSON.stringify(a) }),
   createAlert: (a: AlertCreate) => j("/api/alerts", { method: "POST", body: JSON.stringify(a) }),
@@ -67,6 +68,14 @@ export const api = {
     j<{ market: string; sent: boolean; indices: number; holdings: number; watchlist: number }>(`/api/market-summary/${m}/send`, { method: "POST" }),
 };
 
+export interface TrendPoint {
+  date: string;
+  total_value_krw: number;
+  total_cost_krw: number;
+  total_pl_krw: number;
+  total_cash_krw: number;
+  allocation: { asset_class: string; value_krw: number }[];
+}
 export interface ResolveResponse {
   ok: boolean;
   asset: any | null;

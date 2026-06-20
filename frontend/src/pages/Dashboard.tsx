@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { PortfolioOut, AlertRow } from "../api";
+import TrendChart from "../components/TrendChart";
 
 const krw = (n: number) => n.toLocaleString("ko-KR", { maximumFractionDigits: 0 });
 
@@ -49,6 +50,7 @@ export default function Dashboard() {
           <div className="text-2xl font-semibold">₩{krw(s.total_cash_krw)}</div>
         </div>
       </div>
+      <TrendChart />
       <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse whitespace-nowrap">
         <thead><tr className="border-b border-border text-left text-muted">

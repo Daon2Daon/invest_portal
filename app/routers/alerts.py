@@ -5,7 +5,7 @@ from app.db import get_db
 from app.models import Asset
 from app.schemas.alert import AlertCreate, AlertUpdate, AlertOut
 from app.services.alert import alert_store
-from app.services.alert.alert_store import list_alerts_view
+from app.services.alert.alert_store import list_alerts_view, list_all_alerts_view
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 
@@ -24,7 +24,9 @@ async def create(body: AlertCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("")
-async def list_alerts(asset_id: int, db: AsyncSession = Depends(get_db)):
+async def list_alerts(asset_id: int | None = None, db: AsyncSession = Depends(get_db)):
+    if asset_id is None:
+        return await list_all_alerts_view(db)
     return await list_alerts_view(db, asset_id)
 
 

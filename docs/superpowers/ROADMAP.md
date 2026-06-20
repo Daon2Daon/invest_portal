@@ -82,6 +82,16 @@
 - 내용: 2단계 차트에서 빠졌던 매물대를 복원. `chart_service._volume_profile`(가격대별 누적 거래량) + Panel1 `twiny` barh 오버레이(이평선/볼린저 뒤), `chart_analyzer.DEFAULT_PROMPT`에 매물대 해석 설명 추가(기본 프롬프트만).
 - 상태: 백엔드 135 테스트 통과. 직접(서브에이전트 없이) TDD 구현.
 
+## 알림 허브 + 디자인 시스템 통합 — **구현 완료 (2026-06-20)**
+- spec: `docs/superpowers/specs/2026-06-20-alerts-hub-and-design-system-design.md`
+- plan: `docs/superpowers/plans/2026-06-20-alerts-hub-and-design-system.md`
+- 동기: 테스트 피드백 2건 — (1) 종목별로만 알림이 보여 전체 현황 파악 불가, (2) 디자인이 투박함.
+- 내용:
+  - **알림 허브**: `alert_store.list_all_alerts_view`(활성 자산 전체 알림 + 자산메타, 자산당 quote 1회 그룹화, `_alert_row` 헬퍼 공유) + `GET /api/alerts`의 `asset_id` 선택화(없으면 전체). 신규 `Alerts.tsx`(조회+생성+켜기끄기·삭제·재무장, 발동 시 "도달" 표시), 공용 `AlertForm`(허브 picker / 상세 fixed 모드, AssetDetail에서 추출 공유), 대시보드·관심종목 행에 알림 개수 배지. 생성/수정/삭제/재무장은 기존 엔드포인트 재사용.
+  - **디자인 시스템**: `index.css` Vite 잔재 제거 + CSS 변수 토큰(라이트/다크) + 공용 클래스(`card/btn/btn-primary/input/badge`) + Tailwind 색상 매핑. 테마 토글(시스템 기본, localStorage 유지, `<html data-theme>`). 반응형 `AppShell`(≥lg 사이드바 / 미만 상단 탭바). 기존 5개 페이지 전부 토큰 재단장(빨강=상승/파랑=하락 유지, 다크모드 가독성 토큰화: ok/warn 패널 포함). 포인트색=보라(`--accent` 단일 토큰).
+- 상태: 백엔드 **157 테스트 통과**(invest_test), 프론트 빌드 통과. 서브에이전트 주도 개발(태스크별 spec+품질 2단계 리뷰 + 최종 홀리스틱 리뷰). **수동 브라우저 스모크는 사용자 확인 대기**(테마 토글·반응형·알림 추가/관리 흐름).
+- 비고(YAGNI 제외): 알림 발송 이력, 종목 검색 자동완성, 커스텀 테마색 UI, matplotlib 차트 다크모드, 허브에서의 값/방향 수정.
+
 ## my-assistant 미이식 잔여 (비교검토 결과)
 - ✅ 가격 알림(완료, 위), ✅ 거래일/장중 체크(가격알림의 market_hours로 충족), ✅ 매물대 패널(완료, 위).
 - ✅ **증시 마감 요약 푸시** — **구현 완료 (main 병합됨, 2026-06-20, merge `79e641c`)**. spec/plan: `docs/superpowers/{specs,plans}/2026-06-20-market-summary-push*`. US/KR 시장별(지수+보유+관심 일/주/월·52주), `feature_type=market_summary_us/kr`+target_id=0로 기존 schedules 재사용, `market_hours.is_trading_day` 휴장 스킵, `services/market_summary/`+`routers/market_summary.py`+설정 섹션. 백엔드 155 테스트 통과.

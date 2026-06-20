@@ -73,3 +73,32 @@ async def test_list_active_with_assets_filters(db_session):
     pairs = await alert_store.list_active_with_assets(db_session)
     values = sorted(float(al.value) for al, _ in pairs)
     assert values == [1.0]
+
+
+@pytest.mark.asyncio
+async def test_list_all_alerts_view_groups_and_enriches(db_session, monkeypatch):
+    a1 = _asset(ticker="ALLA", name="에이", fetch_symbol="ALLA")
+    a2 = _asset(ticker="ALLB", name="비", fetch_symbol="ALLB")
+    inactive = _asset(ticker="ALLC", fetch_symbol="ALLC", is_active=False)
+    db_session.add_all([a1, a2, inactive]); await db_session.commit()
+    await alert_store.create_alert(db_session, a1.asset_id, "ABSOLUTE", "ABOVE", 100.0)
+    await alert_store.create_alert(db_session, a1.asset_id, "ABSOLUTE", "BELOW", 50.0)
+    await alert_store.create_alert(db_session, a2.asset_id, "ABSOLUTE", "ABOVE", 10.0)
+    await alert_store.create_alert(db_session, inactive.asset_id, "ABSOLUTE", "ABOVE", 1.0)
+    await db_session.commit()
+
+    calls = {"n": 0}
+    from types import SimpleNamespace
+    async def fake_quote(asset):
+        calls["n"] += 1
+        return SimpleNamespace(price=75.0, status="ok")
+    monkeypatch.setattr("app.services.alert.alert_store.get_quote", fake_quote)
+
+    rows = await alert_store.list_all_alerts_view(db_session)
+    # 비활성 자산 제외 → 3건
+    assert len(rows) == 3
+    # 자산당 quote 1회(2개 활성 자산) — 알림 3건이어도 호출 2회
+    assert calls["n"] == 2
+    # 자산 메타 포함
+    assert {r["asset_name"] for r in rows} == {"에이", "비"}
+    assert all("ticker" in r and "target_price" in r for r in rows)

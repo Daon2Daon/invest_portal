@@ -80,26 +80,54 @@ from app.services.alert.basis import resolve_basis_price
 from app.services.alert.evaluator import compute_target, is_fired
 
 
+async def _alert_row(db: AsyncSession, asset: Asset, a: PriceAlert, cur: float | None,
+                     price_status: str) -> dict:
+    """단일 알림 + 라이브(목표가·발동여부) 계산. cur는 자산 현재가(없으면 None)."""
+    bp = await resolve_basis_price(db, asset, a.basis)
+    target = (compute_target(a.basis, a.direction, float(a.value), bp)
+              if (bp is not None or a.basis == "ABSOLUTE") else None)
+    fired = bool(cur is not None and target is not None
+                 and is_fired(a.direction, cur, target))
+    return {
+        "alert_id": a.alert_id, "asset_id": a.asset_id, "basis": a.basis,
+        "direction": a.direction, "value": float(a.value), "enabled": a.enabled,
+        "is_triggered": a.is_triggered, "note": a.note,
+        "target_price": target, "current_price": cur,
+        "price_status": price_status, "fired": fired,
+    }
+
+
 async def list_alerts_view(db: AsyncSession, asset_id: int) -> list[dict]:
-    """자산의 알림 + 라이브(현재가·목표가·발동여부) 계산. 자산 없으면 빈 리스트."""
+    """자산의 알림 + 라이브 계산. 자산 없으면 빈 리스트."""
     asset = await db.get(Asset, asset_id)
     if asset is None:
         return []
     alerts = await list_by_asset(db, asset_id)
     quote = await get_quote(asset)
     cur = quote.price if quote.status == "ok" else None
+    return [await _alert_row(db, asset, a, cur, quote.status) for a in alerts]
+
+
+async def list_all_alerts_view(db: AsyncSession) -> list[dict]:
+    """모든 활성 자산의 알림(enabled/triggered 무관) + 자산 메타 + 라이브 계산.
+    자산당 시세 1회만 조회. 발동/예정 항목을 위로, 그다음 종목명 정렬."""
+    rows = (await db.execute(
+        select(PriceAlert, Asset).join(Asset, Asset.asset_id == PriceAlert.asset_id)
+        .where(Asset.is_active.is_(True)).order_by(PriceAlert.asset_id, PriceAlert.alert_id)
+    )).all()
+    # asset_id별 그룹
+    by_asset: dict[int, tuple[Asset, list[PriceAlert]]] = {}
+    for alert, asset in rows:
+        by_asset.setdefault(asset.asset_id, (asset, []))[1].append(alert)
+
     out: list[dict] = []
-    for a in alerts:
-        bp = await resolve_basis_price(db, asset, a.basis)
-        target = (compute_target(a.basis, a.direction, float(a.value), bp)
-                  if (bp is not None or a.basis == "ABSOLUTE") else None)
-        fired = bool(cur is not None and target is not None
-                     and is_fired(a.direction, cur, target))
-        out.append({
-            "alert_id": a.alert_id, "asset_id": a.asset_id, "basis": a.basis,
-            "direction": a.direction, "value": float(a.value), "enabled": a.enabled,
-            "is_triggered": a.is_triggered, "note": a.note,
-            "target_price": target, "current_price": cur,
-            "price_status": quote.status, "fired": fired,
-        })
+    for asset, alerts in by_asset.values():
+        quote = await get_quote(asset)
+        cur = quote.price if quote.status == "ok" else None
+        for a in alerts:
+            row = await _alert_row(db, asset, a, cur, quote.status)
+            row.update(asset_name=asset.name, ticker=asset.ticker,
+                       market=asset.market, asset_class=asset.asset_class)
+            out.append(row)
+    out.sort(key=lambda r: (not (r["fired"] or r["is_triggered"]), r["asset_name"]))
     return out

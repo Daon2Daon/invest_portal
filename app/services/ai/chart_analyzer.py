@@ -1,7 +1,6 @@
 """차트 이미지 → AI 기술분석 텍스트(텔레그램 HTML). 설정은 ai_gateway 카테고리."""
 from __future__ import annotations
 
-import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -9,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.settings.settings_manager import get_setting
 from app.services.ai import llm_client
+from app.services.ai import telegram_md
 
 CATEGORY = "ai_gateway"
 _TEMPERATURE = 0.4
@@ -72,31 +72,6 @@ _TELEGRAM_FORMAT_INSTRUCTION = """
 - 불릿(-)은 그대로 유지, 1200자 이내 권장"""
 
 
-def _md_to_telegram_html(text: str) -> str:
-    text = re.sub(r"```[a-zA-Z]*\n?([\s\S]*?)```", r"<pre>\1</pre>", text)
-    text = re.sub(r"`([^`\n]+)`", r"<code>\1</code>", text)
-    text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
-    text = re.sub(r"\*([^*\n]+)\*", r"<i>\1</i>", text)
-    text = re.sub(r"^#{1,3}\s+(.+)$", r"<b>\1</b>", text, flags=re.MULTILINE)
-    text = re.sub(r"<(h[1-6]|ul|ol|li|hr|br|div|span|p)\b[^>]*>", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"</(h[1-6]|ul|ol|li|hr|br|div|span|p)\b>", "", text, flags=re.IGNORECASE)
-    return text.strip()
-
-
-def _split_message(text: str, limit: int = 4000) -> list[str]:
-    if len(text) <= limit:
-        return [text]
-    parts, current, current_len = [], [], 0
-    for line in text.splitlines(keepends=True):
-        if current_len + len(line) > limit and current:
-            parts.append("".join(current))
-            current, current_len = [], 0
-        current.append(line)
-        current_len += len(line)
-    if current:
-        parts.append("".join(current))
-    return parts
-
 
 def _build_prompt(user_prompt: str, ticker: str, name: str, market: str,
                   chart_labels: list[str]) -> str:
@@ -141,4 +116,4 @@ async def analyze(db: AsyncSession, images: list[tuple[bytes, str]],
                   ticker: str, name: str, market: str) -> list[str]:
     """이미지(일봉,주봉 순) → 텔레그램 HTML 메시지 조각 리스트. 미설정/비활성/실패는 예외 전파."""
     raw = await analyze_raw(db, images, ticker, name, market)
-    return _split_message(_md_to_telegram_html(raw))
+    return telegram_md.split_message(telegram_md.md_to_telegram_html(raw))

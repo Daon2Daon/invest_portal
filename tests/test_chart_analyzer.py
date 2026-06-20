@@ -1,10 +1,11 @@
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 from app.services.ai import chart_analyzer as ca
+from app.services.ai import telegram_md as tm
 
 
 def test_md_to_telegram_html_converts():
-    out = ca._md_to_telegram_html("# 제목\n**굵게** *기울임* `코드`")
+    out = tm.md_to_telegram_html("# 제목\n**굵게** *기울임* `코드`")
     assert "<b>제목</b>" in out
     assert "<b>굵게</b>" in out
     assert "<i>기울임</i>" in out
@@ -12,20 +13,20 @@ def test_md_to_telegram_html_converts():
 
 
 def test_md_to_telegram_html_strips_unsupported_tags():
-    out = ca._md_to_telegram_html("<ul><li>항목</li></ul>")
+    out = tm.md_to_telegram_html("<ul><li>항목</li></ul>")
     assert "<ul>" not in out and "<li>" not in out
     assert "항목" in out
 
 
 def test_split_message_splits_long_text():
     text = "\n".join(["x" * 100 for _ in range(60)])  # ~6000자
-    parts = ca._split_message(text, limit=4000)
+    parts = tm.split_message(text, limit=4000)
     assert len(parts) >= 2
     assert all(len(p) <= 4000 for p in parts)
 
 
 def test_split_message_short_returns_single():
-    assert ca._split_message("짧은 글") == ["짧은 글"]
+    assert tm.split_message("짧은 글") == ["짧은 글"]
 
 
 def test_build_prompt_prepends_meta_and_appends_format():

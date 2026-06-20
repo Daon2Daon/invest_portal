@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
-import type { PortfolioOut } from "../api";
+import type { PortfolioOut, AlertRow } from "../api";
 
 const krw = (n: number) => n.toLocaleString("ko-KR", { maximumFractionDigits: 0 });
 
@@ -9,10 +9,18 @@ export default function Dashboard() {
   const nav = useNavigate();
   const [data, setData] = useState<PortfolioOut | null>(null);
   const [loading, setLoading] = useState(false);
+  const [alertCount, setAlertCount] = useState<Record<number, number>>({});
 
   const load = async () => setData(await api.portfolio());
   const refresh = async () => { setLoading(true); try { setData(await api.refresh()); } finally { setLoading(false); } };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    api.listAllAlerts().then((rows: AlertRow[]) => {
+      const m: Record<number, number> = {};
+      rows.forEach((r) => { if (r.enabled && !r.is_triggered) m[r.asset_id] = (m[r.asset_id] || 0) + 1; });
+      setAlertCount(m);
+    }).catch(() => {});
+  }, []);
 
   if (!data) return <div className="p-6">불러오는 중…</div>;
   const s = data.summary;
@@ -50,7 +58,12 @@ export default function Dashboard() {
           {data.positions.map((p) => (
             <tr key={p.asset_id} className="border-b border-border hover:bg-surface-2 cursor-pointer"
               onClick={() => nav(`/asset/${p.asset_id}`)}>
-              <td className="py-2">{p.name} <span className="text-muted">{p.ticker}·{p.market}</span></td>
+              <td className="py-2">{p.name} <span className="text-muted">{p.ticker}·{p.market}</span>
+                {alertCount[p.asset_id] ? (
+                  <span className="badge ml-2 cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); nav("/alerts"); }}>🔔 {alertCount[p.asset_id]}</span>
+                ) : null}
+              </td>
               <td>{p.asset_class}</td>
               <td>{p.quantity}</td><td>{p.avg_price.toLocaleString()}</td>
               <td>{p.current_price.toLocaleString()}</td><td>₩{krw(p.value_krw)}</td>

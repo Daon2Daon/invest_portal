@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
-import type { WatchlistItem, ResolveResponse } from "../api";
+import type { WatchlistItem, ResolveResponse, AlertRow } from "../api";
 
 const MARKETS = ["US", "KR", "JP", "CRYPTO"];
 const ASSET_TYPES = [
@@ -17,9 +17,17 @@ export default function Watchlist() {
   const [assetType, setAssetType] = useState("");
   const [preview, setPreview] = useState<ResolveResponse | null>(null);
   const [msg, setMsg] = useState("");
+  const [alertCount, setAlertCount] = useState<Record<number, number>>({});
 
   const load = async () => setRows(await api.listWatchlist());
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    api.listAllAlerts().then((rows: AlertRow[]) => {
+      const m: Record<number, number> = {};
+      rows.forEach((r) => { if (r.enabled && !r.is_triggered) m[r.asset_id] = (m[r.asset_id] || 0) + 1; });
+      setAlertCount(m);
+    }).catch(() => {});
+  }, []);
 
   const doResolve = async () => {
     setMsg("");
@@ -82,7 +90,12 @@ export default function Watchlist() {
           {rows.map((r) => (
             <tr key={r.asset_id} className="border-b border-border hover:bg-surface-2 cursor-pointer"
               onClick={() => nav(`/asset/${r.asset_id}`)}>
-              <td className="py-2">{r.name} <span className="text-muted">{r.ticker}·{r.market}</span></td>
+              <td className="py-2">{r.name} <span className="text-muted">{r.ticker}·{r.market}</span>
+                {alertCount[r.asset_id] ? (
+                  <span className="badge ml-2 cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); nav("/alerts"); }}>🔔 {alertCount[r.asset_id]}</span>
+                ) : null}
+              </td>
               <td>{r.current_price == null
                 ? <span className="text-amber-600">⚠{r.price_status}</span>
                 : r.current_price.toLocaleString()}</td>

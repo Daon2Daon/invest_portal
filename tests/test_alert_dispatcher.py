@@ -17,9 +17,10 @@ def _asset(asset_id=1, market="US"):
     return SimpleNamespace(asset_id=asset_id, market=market, name="N", ticker="T", currency="USD")
 
 
-def _alert(alert_id=1, basis="ABSOLUTE", direction="ABOVE", value=100.0):
+def _alert(alert_id=1, basis="ABSOLUTE", direction="ABOVE", value=100.0, reference_price=None):
     return SimpleNamespace(alert_id=alert_id, basis=basis, direction=direction, value=value,
-                           enabled=True, is_triggered=False, triggered_at=None, last_notified_at=None)
+                           enabled=True, is_triggered=False, triggered_at=None,
+                           last_notified_at=None, reference_price=reference_price)
 
 
 def _patches(pairs, quote, market_open=True, send_ok=True, basis_price=None):
@@ -114,3 +115,56 @@ async def test_scheduler_registers_alert_tick():
         assert "alert_tick" in ids
     finally:
         sched_mod.shutdown_scheduler()
+
+
+@pytest.mark.asyncio
+async def test_reference_lazy_init_sets_reference_no_fire():
+    asset = _asset()
+    alert = _alert(basis="REFERENCE", direction="BOTH", value=5.0, reference_price=None)
+    q = Quote(price=100.0, currency="USD", status="ok")
+    send = AsyncMock(return_value=True)
+    with patch.object(disp, "SessionLocal", return_value=_FakeSession()), \
+         patch.object(disp.alert_store, "list_active_with_assets", AsyncMock(return_value=[(alert, asset)])), \
+         patch.object(disp, "is_market_open", return_value=True), \
+         patch.object(disp, "get_quote", AsyncMock(return_value=q)), \
+         patch.object(disp.telegram_service, "send_message", send), \
+         patch.object(disp.asyncio, "sleep", AsyncMock()):
+        await disp.evaluate_tick()
+    assert alert.reference_price == 100.0
+    send.assert_not_awaited()
+    assert alert.is_triggered is False
+
+@pytest.mark.asyncio
+async def test_reference_fires_and_reanchors():
+    asset = _asset()
+    alert = _alert(basis="REFERENCE", direction="BOTH", value=5.0, reference_price=100.0)
+    q = Quote(price=106.0, currency="USD", status="ok")
+    send = AsyncMock(return_value=True)
+    with patch.object(disp, "SessionLocal", return_value=_FakeSession()), \
+         patch.object(disp.alert_store, "list_active_with_assets", AsyncMock(return_value=[(alert, asset)])), \
+         patch.object(disp, "is_market_open", return_value=True), \
+         patch.object(disp, "get_quote", AsyncMock(return_value=q)), \
+         patch.object(disp.telegram_service, "send_message", send), \
+         patch.object(disp.asyncio, "sleep", AsyncMock()):
+        await disp.evaluate_tick()
+    send.assert_awaited_once()
+    assert alert.reference_price == 106.0     # 재설정
+    assert alert.enabled is True              # 유지
+    assert alert.is_triggered is False        # 불변
+    assert alert.last_notified_at is not None
+
+@pytest.mark.asyncio
+async def test_reference_below_threshold_no_fire():
+    asset = _asset()
+    alert = _alert(basis="REFERENCE", direction="BOTH", value=5.0, reference_price=100.0)
+    q = Quote(price=103.0, currency="USD", status="ok")
+    send = AsyncMock(return_value=True)
+    with patch.object(disp, "SessionLocal", return_value=_FakeSession()), \
+         patch.object(disp.alert_store, "list_active_with_assets", AsyncMock(return_value=[(alert, asset)])), \
+         patch.object(disp, "is_market_open", return_value=True), \
+         patch.object(disp, "get_quote", AsyncMock(return_value=q)), \
+         patch.object(disp.telegram_service, "send_message", send), \
+         patch.object(disp.asyncio, "sleep", AsyncMock()):
+        await disp.evaluate_tick()
+    send.assert_not_awaited()
+    assert alert.reference_price == 100.0

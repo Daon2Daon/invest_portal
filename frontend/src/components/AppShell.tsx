@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { currentTheme, setTheme, type Theme } from "../theme";
+import { currentTheme, setTheme } from "../theme";
 
 const NAV = [
   { to: "/", label: "포트폴리오", end: true },
@@ -11,22 +11,22 @@ const NAV = [
 ];
 
 function ThemeToggle() {
-  const [t, setT] = useState<Theme>(currentTheme());
-  const flip = () => { const n = t === "dark" ? "light" : "dark"; setTheme(n); setT(n); };
+  const [, rerender] = useState(0);
+  const t = currentTheme();
+  const flip = () => { setTheme(t === "dark" ? "light" : "dark"); rerender((n) => n + 1); };
   return (
-    <button onClick={flip} className="btn btn-ghost text-sm" title="테마 전환">
+    <button onClick={flip} aria-label="테마 전환" title="테마 전환" className="btn btn-ghost text-sm">
       {t === "dark" ? "☀️ 라이트" : "🌙 다크"}
     </button>
   );
 }
 
-function links(onClick?: () => void) {
+function links() {
   return NAV.map((n) => (
     <NavLink
       key={n.to}
       to={n.to}
       end={n.end}
-      onClick={onClick}
       className={({ isActive }) =>
         `block rounded-lg px-3 py-2 text-sm ${isActive ? "bg-surface-2 text-accent font-semibold" : "text-muted hover:text-text"}`
       }

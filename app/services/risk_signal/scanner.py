@@ -25,12 +25,12 @@ async def scan(db: AsyncSession, config: dict) -> list[dict]:
                 continue
             try:
                 df = await get_history(asset, _HISTORY_DAYS)
-            except Exception:   # noqa: BLE001 — 한 종목 실패가 스캔 전체를 막지 않음
-                df = None
-            if df is None or len(df) < 2 or "Close" not in getattr(df, "columns", []):
+                if df is None or len(df) < 2 or "Close" not in getattr(df, "columns", []):
+                    continue
+                ind = calculate_indicators(df)
+                signals.extend(evaluator.technical_signals(p["ticker"], p["name"], ind, config))
+            except Exception:   # noqa: BLE001 — 한 종목 실패(조회·지표계산 포함)가 스캔 전체를 막지 않음
                 continue
-            ind = calculate_indicators(df)
-            signals.extend(evaluator.technical_signals(p["ticker"], p["name"], ind, config))
 
     signals.extend(evaluator.concentration_signals(portfolio, config))
     return signals

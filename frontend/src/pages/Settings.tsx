@@ -90,6 +90,15 @@ export default function Settings() {
   const [schedEnabled, setSchedEnabled] = useState(false);
   const [schedMsg, setSchedMsg] = useState("");
 
+  // 위험신호
+  const [risk, setRisk] = useState({
+    enabled: false, sig_rsi: true, sig_macd: true, sig_bollinger: true, sig_ma: true,
+    sig_concentration_asset: true, sig_concentration_class: true,
+    threshold_asset_pct: 30, threshold_class_pct: 60,
+  });
+  const [riskSched, setRiskSched] = useState({ send_time: "08:00", days_of_week: [0, 1, 2, 3, 4] as number[], enabled: false });
+  const [riskPreview, setRiskPreview] = useState("");
+
   const load = async () => {
     const t = await api.getTelegram();
     setChatId(t.chat_id); setTokenSet(t.bot_token_set); setToken("");
@@ -104,6 +113,8 @@ export default function Settings() {
       const rs = await api.getReportSchedule();
       if (rs) { setSchedTime(rs.send_time); setSchedDays(rs.days_of_week); setSchedEnabled(rs.enabled); }
     } catch { /* not yet configured */ }
+    api.getRiskSignal().then((r) => setRisk(r as any)).catch(() => {});
+    api.getRiskSchedule().then((s) => { if (s) setRiskSched(s); }).catch(() => {});
   };
   useEffect(() => { load(); }, []);
 
@@ -131,6 +142,14 @@ export default function Settings() {
 
   const toggleSchedDay = (d: number) =>
     setSchedDays((p) => p.includes(d) ? p.filter((x) => x !== d) : [...p, d].sort());
+
+  const saveRisk = async () => { await api.saveRiskSignal(risk as any); };
+  const saveRiskSchedule = async () => { await api.saveRiskSchedule(riskSched); };
+  const doRiskPreview = async () => { const r = await api.previewRiskSignal(); setRiskPreview(r.text); };
+  const doRiskSend = async () => {
+    try { await api.sendRiskSignal(); setRiskPreview("텔레그램으로 발송했습니다."); }
+    catch (e) { setRiskPreview(String(e).includes("409") ? "텔레그램이 설정되지 않았습니다." : String(e)); }
+  };
 
   const saveReportSchedule = async () => {
     setSchedMsg("저장 중…");
@@ -260,6 +279,82 @@ export default function Settings() {
             {schedMsg && <span className="text-sm text-muted">{schedMsg}</span>}
           </div>
         </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="font-semibold text-muted">위험신호</h2>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={risk.enabled}
+                 onChange={(e) => setRisk({ ...risk, enabled: e.target.checked })} />
+          자동 발송 활성화
+        </label>
+
+        <div className="space-y-1">
+          <div className="text-sm font-semibold">기술적 신호</div>
+          {([["sig_rsi", "RSI 과매수/과매도"], ["sig_macd", "MACD 교차"],
+             ["sig_bollinger", "볼린저밴드 이탈"], ["sig_ma", "이동평균(SMA50) 돌파"]] as const).map(([k, label]) => (
+            <label key={k} className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={(risk as any)[k]}
+                     onChange={(e) => setRisk({ ...risk, [k]: e.target.checked })} />
+              {label}
+            </label>
+          ))}
+        </div>
+
+        <div className="space-y-2">
+          <div className="text-sm font-semibold">비중 편향</div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={risk.sig_concentration_asset}
+                   onChange={(e) => setRisk({ ...risk, sig_concentration_asset: e.target.checked })} />
+            단일 종목 과중 ≥
+            <input className="input w-20" type="number" value={risk.threshold_asset_pct}
+                   onChange={(e) => setRisk({ ...risk, threshold_asset_pct: Number(e.target.value) })} /> %
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={risk.sig_concentration_class}
+                   onChange={(e) => setRisk({ ...risk, sig_concentration_class: e.target.checked })} />
+            단일 자산군 과중 ≥
+            <input className="input w-20" type="number" value={risk.threshold_class_pct}
+                   onChange={(e) => setRisk({ ...risk, threshold_class_pct: Number(e.target.value) })} /> %
+          </label>
+        </div>
+
+        <button className="btn btn-primary" onClick={saveRisk}>위험신호 설정 저장</button>
+
+        <div className="card space-y-2 mt-2">
+          <div className="font-medium text-sm">자동 발송 스케줄</div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-sm">발송 시각(KST)</label>
+            <input className="input" type="time" value={riskSched.send_time}
+                   onChange={(e) => setRiskSched({ ...riskSched, send_time: e.target.value })} />
+          </div>
+          <div className="flex items-center gap-1 flex-wrap">
+            {DAY_LABELS.map((d, i) => (
+              <button key={i} type="button"
+                className={riskSched.days_of_week.includes(i) ? "btn btn-primary" : "btn"}
+                onClick={() => setRiskSched({
+                  ...riskSched,
+                  days_of_week: riskSched.days_of_week.includes(i)
+                    ? riskSched.days_of_week.filter((x) => x !== i)
+                    : [...riskSched.days_of_week, i].sort(),
+                })}>{d}</button>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={riskSched.enabled}
+                   onChange={(e) => setRiskSched({ ...riskSched, enabled: e.target.checked })} />
+            스케줄 사용
+          </label>
+          <div className="flex gap-2 items-center">
+            <button className="btn btn-primary" onClick={saveRiskSchedule}>스케줄 저장</button>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <button className="btn" onClick={doRiskPreview}>지금 미리보기</button>
+          <button className="btn" onClick={doRiskSend}>지금 보내기</button>
+        </div>
+        {riskPreview && <div className="card whitespace-pre-wrap text-sm">{riskPreview}</div>}
       </section>
 
       <section className="space-y-2">

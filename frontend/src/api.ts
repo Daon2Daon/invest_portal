@@ -78,6 +78,19 @@ export const api = {
     j(`/api/market-summary/${m}/schedule`, { method: "DELETE" }),
   sendMarketSummary: (m: string) =>
     j<{ market: string; sent: boolean; indices: number; holdings: number; watchlist: number }>(`/api/market-summary/${m}/send`, { method: "POST" }),
+  getRiskSignal: () => j<{
+    enabled: boolean; sig_rsi: boolean; sig_macd: boolean; sig_bollinger: boolean; sig_ma: boolean;
+    sig_concentration_asset: boolean; sig_concentration_class: boolean;
+    threshold_asset_pct: number; threshold_class_pct: number;
+  }>("/api/risk-signal/settings"),
+  saveRiskSignal: (s: Record<string, boolean | number>) =>
+    j("/api/risk-signal/settings", { method: "PUT", body: JSON.stringify(s) }),
+  getRiskSchedule: () =>
+    j<{ send_time: string; days_of_week: number[]; enabled: boolean } | null>("/api/risk-signal/schedule"),
+  saveRiskSchedule: (s: { send_time: string; days_of_week: number[]; enabled: boolean }) =>
+    j("/api/risk-signal/schedule", { method: "PUT", body: JSON.stringify(s) }),
+  previewRiskSignal: () => j<{ text: string }>("/api/risk-signal/preview", { method: "POST" }),
+  sendRiskSignal: () => j<{ sent: boolean }>("/api/risk-signal/send", { method: "POST" }),
 };
 
 export type ReportRow = {

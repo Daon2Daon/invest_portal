@@ -58,6 +58,18 @@ export const api = {
   createAlert: (a: AlertCreate) => j("/api/alerts", { method: "POST", body: JSON.stringify(a) }),
   rearmAlert: (id: number) => j(`/api/alerts/${id}/rearm`, { method: "POST" }),
   deleteAlert: (id: number) => j(`/api/alerts/${id}`, { method: "DELETE" }),
+  listReports: () => j<ReportRow[]>("/api/reports"),
+  getReport: (id: number) => j<ReportRow>(`/api/reports/${id}`),
+  createReport: () => j<ReportRow>("/api/reports", { method: "POST" }),
+  deleteReport: (id: number) => j(`/api/reports/${id}`, { method: "DELETE" }),
+  sendReportTelegram: (id: number) => j<{ sent: number }>(`/api/reports/${id}/send-telegram`, { method: "POST" }),
+  getAiReport: () => j<{ model: string; prompt: string; enabled: boolean }>("/api/settings/ai-report"),
+  saveAiReport: (a: { model?: string; prompt?: string; enabled?: boolean }) =>
+    j("/api/settings/ai-report", { method: "PUT", body: JSON.stringify(a) }),
+  getReportSchedule: () =>
+    j<{ send_time: string; days_of_week: number[]; enabled: boolean } | null>("/api/reports/schedule"),
+  saveReportSchedule: (s: { send_time: string; days_of_week: number[]; enabled: boolean }) =>
+    j("/api/reports/schedule", { method: "PUT", body: JSON.stringify(s) }),
   getMarketSummarySchedule: (m: string) =>
     j<{ send_time: string; days_of_week: number[]; enabled: boolean } | null>(`/api/market-summary/${m}/schedule`),
   saveMarketSummarySchedule: (m: string, s: { send_time: string; days_of_week: number[]; enabled: boolean }) =>
@@ -68,6 +80,10 @@ export const api = {
     j<{ market: string; sent: boolean; indices: number; holdings: number; watchlist: number }>(`/api/market-summary/${m}/send`, { method: "POST" }),
 };
 
+export type ReportRow = {
+  id: number; title: string; content_md: string;
+  model: string; trigger: string; created_at: string | null;
+};
 export interface TrendPoint {
   date: string;
   total_value_krw: number;

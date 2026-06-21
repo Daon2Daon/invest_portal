@@ -7,6 +7,7 @@ const NAV = [
   { to: "/manage", label: "보유종목" },
   { to: "/watchlist", label: "관심종목" },
   { to: "/alerts", label: "알림" },
+  { to: "/reports", label: "리포트" },
   { to: "/settings", label: "설정" },
 ];
 

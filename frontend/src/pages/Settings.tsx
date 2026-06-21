@@ -78,12 +78,32 @@ export default function Settings() {
   const [enabled, setEnabled] = useState(false);
   const [aiMsg, setAiMsg] = useState("");
 
+  // AI 리포트
+  const [reportModel, setReportModel] = useState("");
+  const [reportPrompt, setReportPrompt] = useState("");
+  const [reportEnabled, setReportEnabled] = useState(false);
+  const [reportMsg, setReportMsg] = useState("");
+
+  // 리포트 자동 발송 스케줄
+  const [schedTime, setSchedTime] = useState("06:30");
+  const [schedDays, setSchedDays] = useState<number[]>([0, 1, 2, 3, 4]);
+  const [schedEnabled, setSchedEnabled] = useState(false);
+  const [schedMsg, setSchedMsg] = useState("");
+
   const load = async () => {
     const t = await api.getTelegram();
     setChatId(t.chat_id); setTokenSet(t.bot_token_set); setToken("");
     const a = await api.getAi();
     setBaseUrl(a.base_url); setApiKeySet(a.api_key_set); setApiKey("");
     setModel(a.model); setPrompt(a.prompt); setEnabled(a.enabled);
+    try {
+      const ar = await api.getAiReport();
+      setReportModel(ar.model); setReportPrompt(ar.prompt); setReportEnabled(ar.enabled);
+    } catch { /* not yet configured */ }
+    try {
+      const rs = await api.getReportSchedule();
+      if (rs) { setSchedTime(rs.send_time); setSchedDays(rs.days_of_week); setSchedEnabled(rs.enabled); }
+    } catch { /* not yet configured */ }
   };
   useEffect(() => { load(); }, []);
 
@@ -101,6 +121,21 @@ export default function Settings() {
     if (apiKey) payload.api_key = apiKey;
     await api.saveAi(payload);
     setAiMsg("저장됨"); await load();
+  };
+
+  const saveAiReport = async () => {
+    setReportMsg("저장 중…");
+    try { await api.saveAiReport({ model: reportModel, prompt: reportPrompt, enabled: reportEnabled }); setReportMsg("저장됨"); }
+    catch (e: any) { setReportMsg("저장 실패: " + e.message); }
+  };
+
+  const toggleSchedDay = (d: number) =>
+    setSchedDays((p) => p.includes(d) ? p.filter((x) => x !== d) : [...p, d].sort());
+
+  const saveReportSchedule = async () => {
+    setSchedMsg("저장 중…");
+    try { await api.saveReportSchedule({ send_time: schedTime, days_of_week: schedDays, enabled: schedEnabled }); setSchedMsg("저장됨"); }
+    catch (e: any) { setSchedMsg("저장 실패: " + e.message); }
   };
 
   const refreshModels = async () => {
@@ -172,6 +207,59 @@ export default function Settings() {
         </label>
         <button onClick={saveAi} className="btn btn-primary">저장</button>
         {aiMsg && <span className="text-sm text-muted ml-2">{aiMsg}</span>}
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-semibold text-muted">AI 리포트</h2>
+        <p className="text-xs text-muted">게이트웨이 URL·API 키는 위 'AI 분석' 섹션에서 공유합니다.</p>
+        <div className="flex gap-2 items-center">
+          <label className="w-28 text-sm">모델</label>
+          {models.length > 0 ? (
+            <select className="input flex-1" value={reportModel}
+              onChange={(e) => setReportModel(e.target.value)}>
+              {!models.includes(reportModel) && reportModel && <option value={reportModel}>{reportModel}</option>}
+              {models.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          ) : (
+            <input className="input flex-1" placeholder="gemini/gemini-2.5-flash"
+              value={reportModel} onChange={(e) => setReportModel(e.target.value)} />
+          )}
+        </div>
+        <div>
+          <label className="text-sm block mb-1">프롬프트</label>
+          <textarea className="input w-full h-32 text-sm font-mono"
+            placeholder="비워두면 기본 프롬프트 사용"
+            value={reportPrompt} onChange={(e) => setReportPrompt(e.target.value)} />
+        </div>
+        <label className="flex gap-2 items-center text-sm">
+          <input type="checkbox" checked={reportEnabled} onChange={(e) => setReportEnabled(e.target.checked)} />
+          AI 리포트 활성화
+        </label>
+        <button onClick={saveAiReport} className="btn btn-primary">저장</button>
+        {reportMsg && <span className="text-sm text-muted ml-2">{reportMsg}</span>}
+
+        <div className="card space-y-2 mt-2">
+          <div className="font-medium text-sm">자동 발송 스케줄</div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-sm">시각</label>
+            <input type="time" className="input" value={schedTime} onChange={(e) => setSchedTime(e.target.value)} />
+            <span className="text-xs text-muted">(KST)</span>
+          </div>
+          <div className="flex items-center gap-1 flex-wrap">
+            {DAY_LABELS.map((lbl, d) => (
+              <button key={d} type="button" onClick={() => toggleSchedDay(d)}
+                className={schedDays.includes(d) ? "btn btn-primary" : "btn"}>{lbl}</button>
+            ))}
+          </div>
+          <label className="flex gap-2 items-center text-sm">
+            <input type="checkbox" checked={schedEnabled} onChange={(e) => setSchedEnabled(e.target.checked)} />
+            활성화
+          </label>
+          <div className="flex gap-2 items-center">
+            <button onClick={saveReportSchedule} className="btn btn-primary">저장</button>
+            {schedMsg && <span className="text-sm text-muted">{schedMsg}</span>}
+          </div>
+        </div>
       </section>
 
       <section className="space-y-2">

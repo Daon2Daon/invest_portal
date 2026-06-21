@@ -6,6 +6,7 @@ import Watchlist from "./pages/Watchlist";
 import AssetDetail from "./pages/AssetDetail";
 import Settings from "./pages/Settings";
 import Alerts from "./pages/Alerts";
+import Reports from "./pages/Reports";
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/watchlist" element={<Watchlist />} />
           <Route path="/alerts" element={<Alerts />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/manage" element={<Holdings />} />
           <Route path="/asset/:id" element={<AssetDetail />} />
           <Route path="/settings" element={<Settings />} />

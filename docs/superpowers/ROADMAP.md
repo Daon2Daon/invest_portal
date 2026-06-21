@@ -127,7 +127,7 @@
 - spec: `docs/superpowers/specs/2026-06-21-risk-signals-design.md`, plan: `docs/superpowers/plans/2026-06-21-risk-signals.md`
 - 내용: 보유 포트폴리오를 **결정론적 규칙**(LLM 없음)으로 스캔해 위험신호를 **일별 다이제스트 1건**으로 텔레그램 발송. 신규 `services/risk_signal/`(`evaluator` 순수규칙: 기술 RSI 70/30·MACD 골든/데드크로스·볼린저 ±2σ 이탈·SMA50 돌파 / 비중 단일종목·자산군 과중 · `scanner` 보유 종목별 `get_history`→`calculate_indicators`(재사용)→evaluator + 비중, manual·무이력·지표실패는 해당 종목만 스킵 · `message` 다이제스트 · `risk_service` load_config/build_digest/build_and_send). 설정 **신규 `risk_signal` 카테고리**(enabled + 신호별 on/off + 비중 임계값%, 기술 임계값은 고정). 자동발송=기존 `schedules` 재사용(`feature_type="risk_signal"`, target_id=0) + 디스패처 `handle_risk_signal`(enabled 게이팅, best-effort, 텔레그램 미설정 swallow). `routers/risk_signal.py`(`/api/risk-signal` settings·schedule·preview·send). 프론트 전용 페이지 없이 **Settings "위험신호" 섹션**(신호 토글·임계값·스케줄 + 지금 미리보기/보내기). 신규 DB 테이블 없음.
 - 상태: 백엔드 **231 테스트 통과**(invest_test, 신규 24; 풀런 중 사전존재 DB 테스트 3건이 일시적 DBAPIError(네트워크) — 격리 재실행 통과, 피처 무관). 프론트 빌드·tsc 통과. 서브에이전트 주도 TDD + 최종 홀리스틱 리뷰 "READY TO MERGE"(Critical/Important 0; 리뷰 반영해 scanner 종목별 격리 강화).
-- **실 텔레그램 스모크는 사용자 확인 대기(프로덕션)**: 설정 활성화·신호/임계값·스케줄 → "지금 미리보기"로 스캔 결과 확인 → "지금 보내기" → 스케줄 자동발송.
+- **스캔 파이프라인 스모크 완료(2026-06-22, 실 DB)**: 설정 로드(기본값)→get_portfolio→보유 8종목 get_history(pykrx/yfinance)→calculate_indicators→evaluator→다이제스트 전 경로 무오류 검증. 기술 신호는 현 시세상 0건(RSI 35~60·밴드 내·교차 없음 = 정상 true negative, 8종목 모두 80봉 지표 계산 확인), 비중 편향은 정상 발동(삼성전자 53.0%·주식 62.2%). **실 텔레그램 발송/스케줄 자동발송은 프로덕션(사용자) 확인 대기.**
 - 비목표(YAGNI): 기술 임계값 사용자설정, 종목별 opt-in, 엣지트리거 실시간/재무장(가격알림이 담당), 신호 이력 저장·전용 페이지, 현금 과소 신호, 휴장일 캘린더 스킵(요일 설정으로 대체).
 
 ### 3단계 D — **미착수**

@@ -87,6 +87,35 @@ async def put_ai(body: AiIn, db: AsyncSession = Depends(get_db)):
     return {"status": "ok"}
 
 
+_AI_REPORT = "ai_report"
+
+
+class AiReportIn(BaseModel):
+    model: str | None = None
+    prompt: str | None = None
+    enabled: bool | None = None
+
+
+@router.get("/ai-report")
+async def get_ai_report(db: AsyncSession = Depends(get_db)):
+    return {
+        "model": await get_setting(db, _AI_REPORT, "model") or "",
+        "prompt": await get_setting(db, _AI_REPORT, "prompt") or "",
+        "enabled": (await get_setting(db, _AI_REPORT, "enabled") or "false").lower() == "true",
+    }
+
+
+@router.put("/ai-report")
+async def put_ai_report(body: AiReportIn, db: AsyncSession = Depends(get_db)):
+    if body.model is not None:
+        await set_setting(db, _AI_REPORT, "model", body.model, is_secret=False)
+    if body.prompt is not None:
+        await set_setting(db, _AI_REPORT, "prompt", body.prompt, is_secret=False)
+    if body.enabled is not None:
+        await set_setting(db, _AI_REPORT, "enabled", "true" if body.enabled else "false", is_secret=False)
+    return {"status": "ok"}
+
+
 @router.get("/{category}/{key}")
 async def read(category: str, key: str, db: AsyncSession = Depends(get_db)):
     return {"value": await get_setting(db, category, key)}

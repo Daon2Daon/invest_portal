@@ -64,3 +64,28 @@ async def test_ai_models_lists_from_gateway():
         async with await _client() as ac:
             resp = await ac.get("/api/settings/ai/models")
     assert resp.json()["models"] == ["gemini/a"]
+
+
+@pytest.mark.asyncio
+async def test_get_put_ai_report_settings():
+    from httpx import AsyncClient, ASGITransport
+    from unittest.mock import patch
+    from app.main import app
+
+    store = {}
+
+    async def fake_get(db, cat, key):
+        return store.get((cat, key))
+
+    async def fake_set(db, cat, key, val, is_secret=False):
+        store[(cat, key)] = val
+
+    with patch("app.routers.settings.get_setting", fake_get), \
+         patch("app.routers.settings.set_setting", fake_set):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as ac:
+            put = await ac.put("/api/settings/ai-report",
+                               json={"model": "gemini/x", "prompt": "지시", "enabled": True})
+            get = await ac.get("/api/settings/ai-report")
+    assert put.status_code == 200
+    body = get.json()
+    assert body["model"] == "gemini/x" and body["prompt"] == "지시" and body["enabled"] is True

@@ -10,10 +10,17 @@ def _fmt(price: float, market: str) -> str:
 
 
 def _sign(pct) -> str:
+    """부호가 방향을 전달하므로 화살표 이모지 없이 +/- 퍼센트만 출력."""
     if pct is None:
         return "—"
-    arrow = "📈" if pct >= 0 else "📉"
-    return f"{arrow}{pct:+.2f}%"
+    return f"{pct:+.2f}%"
+
+
+def _status(pct) -> str:
+    """종목당 1회만 붙이는 가벼운 등락 표식(일간 기준)."""
+    if pct is None:
+        return "·"
+    return "▲" if pct >= 0 else "▼"
 
 
 def build_message(market: str, indices: list[dict],
@@ -28,8 +35,8 @@ def build_message(market: str, indices: list[dict],
         lines.append("")
         lines.append(f"[ {title} ]")
         for name, ticker, s in rows:
-            lines.append(f"<b>{name}</b> ({ticker})")
-            lines.append(f"  {_fmt(s['current'], market)} | "
-                         f"일{_sign(s['daily_pct'])} 주{_sign(s['weekly_pct'])} 월{_sign(s['monthly_pct'])}")
-            lines.append(f"  52주 고점대비 {s['wk52_drop_pct']:+.1f}%")
+            lines.append(f"{_status(s['daily_pct'])} <b>{name}</b> ({ticker})")
+            lines.append(f"  {_fmt(s['current'], market)} · "
+                         f"일 {_sign(s['daily_pct'])} · 주 {_sign(s['weekly_pct'])} · 월 {_sign(s['monthly_pct'])}")
+            lines.append(f"  52주 고점 대비 {s['wk52_drop_pct']:+.1f}%")
     return "\n".join(lines)

@@ -104,7 +104,7 @@
 - ✅ **증시 마감 요약 푸시** — **구현 완료 (main 병합됨, 2026-06-20, merge `79e641c`)**. spec/plan: `docs/superpowers/{specs,plans}/2026-06-20-market-summary-push*`. US/KR 시장별(지수+보유+관심 일/주/월·52주), `feature_type=market_summary_us/kr`+target_id=0로 기존 schedules 재사용, `market_hours.is_trading_day` 휴장 스킵, `services/market_summary/`+`routers/market_summary.py`+설정 섹션. 백엔드 155 테스트 통과.
 - ⏳ 종목 검색 UX — 자산 등록 시 키워드 검색(KR=pykrx 리스트, US=제한적). 후순위.
 
-## 3단계: AI 리포트 + 투자저널 + 위험신호 — **진행 중(A·B 완료)**
+## 3단계: AI 리포트 + 투자저널 + 위험신호 — **진행 중(A·B·C 완료)**
 3단계는 4개 독립 하위 시스템으로 분해해 각각 spec→plan→구현 사이클로 진행. 순서: A(스냅샷, 토대)→B/C/D.
 
 ### 3단계 A: 일별 자산추세 스냅샷 — **구현 완료 (2026-06-20)**
@@ -119,12 +119,18 @@
 - spec: `docs/superpowers/specs/2026-06-21-ai-portfolio-report-design.md`, plan: `docs/superpowers/plans/2026-06-21-ai-portfolio-report.md`
 - 내용: 보유 포트폴리오를 LLM이 분석해 **종합 리포트**(진단+추세+방향제안) 생성·저장·발송. 신규 `ai_reports` 테이블(title/content_md/model/trigger/created_at, ensure_schema 자동생성) + 신규 `services/ai_report/`(`report_data` 포트폴리오·스냅샷추세·종목별 1주/1달 수익률→마크다운 입력블록[history provider 종목당 1회, manual·무이력은 "(이력 없음)" 폴백] · `report_generator` 게이팅+DEFAULT_PROMPT+`create_report` · `report_store` CRUD · `report_dispatch` 텔레그램). `llm_client.generate_text`(텍스트 전용 Gemini) 추가, md→텔레그램HTML·분할을 `ai/telegram_md.py` 공용 모듈로 추출(차트와 공유, 회귀 0). `routers/reports.py`(`/api/reports` CRUD·send-telegram·schedule[/schedule를 /{report_id} 위에 배치]). 설정 **신규 `ai_report` 카테고리**(model/prompt/enabled 전용, 연결 base_url/api_key는 `ai_gateway` 공유) `GET/PUT /api/settings/ai-report`. 자동발송=기존 `schedules` 재사용(`feature_type="ai_report"`, target_id=0) + 디스패처 `handle_ai_report`(best-effort, 텔레그램 미설정 swallow). 프론트 신규 메뉴 "리포트"(`Reports.tsx`: 생성·목록·본문·삭제·텔레그램), Settings "AI 리포트" 섹션(모델/프롬프트/토글+스케줄). 제안은 비지시적 + 하단 참고용 디스클레이머(저장본문에 1회 포함).
 - 상태: 백엔드 **207 테스트 통과**(invest_test, 신규 30), 프론트 빌드·tsc 통과. 서브에이전트 주도 TDD(태스크별) + 최종 홀리스틱 리뷰 "READY TO MERGE"(Critical/Important 0).
-- 알려진 minor: conftest의 테스트별 drop_all/create_all(공유 invest_test 스키마)이 DB 테스트 증가로 직렬 풀런에서 간헐 InvalidRequestError 유발(개별/격리 실행은 통과) — 피처 코드 무관한 **기존 테스트 인프라 취약성**, 별도 후속(세션 1회 teardown 또는 트랜잭션 격리)으로 정리 권장.
+- 테스트 인프라 개선(완료, main `42e0e44`): conftest를 **세션 1회 스키마 재생성 + 테스트별 TRUNCATE 격리**로 변경해 기존의 테스트별 drop_all/create_all DDL 락 경합(간헐 InvalidRequestError)을 제거. 부수 효과로 풀 스위트 600s→179s(3.3x).
 - **실게이트웨이/실텔레그램 스모크 완료(프로덕션, 2026-06-21)**: 사용자가 프로덕션 환경에서 리포트 생성→본문→텔레그램→스케줄 자동발송 직접 확인.
 - 비목표(YAGNI): 입력 데이터 스냅샷 저장(재현성), 종목별 기술지표·뉴스 입력, 구체 매매지시, 보관개수 제한, 텔레그램 외 채널.
 
-### 3단계 C/D — **미착수**
-- C 위험신호·매수매도 도움: 보유 자산 기술적 지표·비중 편향 기반 알림(기존 alert/scheduler 확장).
+### 3단계 C: 위험신호·매수매도 도움 — **구현 완료 (2026-06-22)**
+- spec: `docs/superpowers/specs/2026-06-21-risk-signals-design.md`, plan: `docs/superpowers/plans/2026-06-21-risk-signals.md`
+- 내용: 보유 포트폴리오를 **결정론적 규칙**(LLM 없음)으로 스캔해 위험신호를 **일별 다이제스트 1건**으로 텔레그램 발송. 신규 `services/risk_signal/`(`evaluator` 순수규칙: 기술 RSI 70/30·MACD 골든/데드크로스·볼린저 ±2σ 이탈·SMA50 돌파 / 비중 단일종목·자산군 과중 · `scanner` 보유 종목별 `get_history`→`calculate_indicators`(재사용)→evaluator + 비중, manual·무이력·지표실패는 해당 종목만 스킵 · `message` 다이제스트 · `risk_service` load_config/build_digest/build_and_send). 설정 **신규 `risk_signal` 카테고리**(enabled + 신호별 on/off + 비중 임계값%, 기술 임계값은 고정). 자동발송=기존 `schedules` 재사용(`feature_type="risk_signal"`, target_id=0) + 디스패처 `handle_risk_signal`(enabled 게이팅, best-effort, 텔레그램 미설정 swallow). `routers/risk_signal.py`(`/api/risk-signal` settings·schedule·preview·send). 프론트 전용 페이지 없이 **Settings "위험신호" 섹션**(신호 토글·임계값·스케줄 + 지금 미리보기/보내기). 신규 DB 테이블 없음.
+- 상태: 백엔드 **231 테스트 통과**(invest_test, 신규 24; 풀런 중 사전존재 DB 테스트 3건이 일시적 DBAPIError(네트워크) — 격리 재실행 통과, 피처 무관). 프론트 빌드·tsc 통과. 서브에이전트 주도 TDD + 최종 홀리스틱 리뷰 "READY TO MERGE"(Critical/Important 0; 리뷰 반영해 scanner 종목별 격리 강화).
+- **실 텔레그램 스모크는 사용자 확인 대기(프로덕션)**: 설정 활성화·신호/임계값·스케줄 → "지금 미리보기"로 스캔 결과 확인 → "지금 보내기" → 스케줄 자동발송.
+- 비목표(YAGNI): 기술 임계값 사용자설정, 종목별 opt-in, 엣지트리거 실시간/재무장(가격알림이 담당), 신호 이력 저장·전용 페이지, 현금 과소 신호, 휴장일 캘린더 스킵(요일 설정으로 대체).
+
+### 3단계 D — **미착수**
 - D 투자저널: 기존 테스트 DB `portfolio_plans`(context_date/summary/key_events/decisions/results/notes) 구조 재설계해 도입.
 
 ## 후속: 포털 통합

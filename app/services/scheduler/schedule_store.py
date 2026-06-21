@@ -8,6 +8,7 @@ FEATURE_CHART = "chart_analysis"
 FEATURE_SUMMARY_US = "market_summary_us"
 FEATURE_SUMMARY_KR = "market_summary_kr"
 FEATURE_REPORT = "ai_report"
+FEATURE_RISK = "risk_signal"
 
 
 async def get_schedule(db: AsyncSession, feature_type: str, target_id: int) -> Schedule | None:

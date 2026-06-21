@@ -10,7 +10,8 @@ from app.services.notification import chart_dispatch
 from app.services.market.market_hours import is_trading_day
 from app.services.market_summary import summary_service
 from app.services.notification import telegram_service
-from app.services.scheduler.schedule_store import FEATURE_SUMMARY_US, FEATURE_SUMMARY_KR
+from app.services.ai_report import report_generator, report_dispatch
+from app.services.scheduler.schedule_store import FEATURE_SUMMARY_US, FEATURE_SUMMARY_KR, FEATURE_REPORT
 
 _log = logging.getLogger(__name__)
 
@@ -36,8 +37,17 @@ async def handle_market_summary(db: AsyncSession, schedule: Schedule) -> None:
         _log.info("텔레그램 미설정 — 증시 요약 발송 생략")
 
 
+async def handle_ai_report(db: AsyncSession, schedule: Schedule) -> None:
+    report = await report_generator.create_report(db, trigger="scheduled")
+    try:
+        await report_dispatch.send_report(db, report)
+    except telegram_service.TelegramNotConfigured:
+        _log.info("텔레그램 미설정 — AI 리포트 발송 생략(생성·저장은 완료)")
+
+
 HANDLERS = {
     "chart_analysis": handle_chart_analysis,
     FEATURE_SUMMARY_US: handle_market_summary,
     FEATURE_SUMMARY_KR: handle_market_summary,
+    FEATURE_REPORT: handle_ai_report,
 }

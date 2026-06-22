@@ -8,6 +8,7 @@ const NAV = [
   { to: "/watchlist", label: "관심종목" },
   { to: "/alerts", label: "알림" },
   { to: "/reports", label: "리포트" },
+  { to: "/journal", label: "저널" },
   { to: "/settings", label: "설정" },
 ];
 

@@ -91,6 +91,14 @@ export const api = {
     j("/api/risk-signal/schedule", { method: "PUT", body: JSON.stringify(s) }),
   previewRiskSignal: () => j<{ text: string }>("/api/risk-signal/preview", { method: "POST" }),
   sendRiskSignal: () => j<{ sent: boolean }>("/api/risk-signal/send", { method: "POST" }),
+  listJournal: (assetId?: number) =>
+    j<JournalEntry[]>(`/api/journal${assetId != null ? `?asset_id=${assetId}` : ""}`),
+  getJournal: (id: number) => j<JournalEntry>(`/api/journal/${id}`),
+  createJournal: (e: { title: string; body?: string; asset_id?: number | null; entry_date?: string }) =>
+    j<JournalEntry>("/api/journal", { method: "POST", body: JSON.stringify(e) }),
+  updateJournal: (id: number, e: { title?: string; body?: string; asset_id?: number | null; entry_date?: string }) =>
+    j<JournalEntry>(`/api/journal/${id}`, { method: "PUT", body: JSON.stringify(e) }),
+  deleteJournal: (id: number) => j(`/api/journal/${id}`, { method: "DELETE" }),
 };
 
 export type ReportRow = {
@@ -166,3 +174,8 @@ export interface AlertView {
 export interface AlertRow extends AlertView {
   asset_name: string; ticker: string; market: string; asset_class: string | null;
 }
+export type JournalEntry = {
+  id: number; entry_date: string; title: string; body: string | null;
+  asset_id: number | null; asset_name: string | null; asset_ticker: string | null;
+  created_at: string | null; updated_at: string | null;
+};

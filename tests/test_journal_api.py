@@ -24,8 +24,13 @@ async def _test_get_db():
         await engine.dispose()
 
 
-# 모든 저널 API 테스트가 테스트 DB를 바라보도록 항상 오버라이드
-app.dependency_overrides[get_db] = _test_get_db
+@pytest.fixture(autouse=True)
+def _override_get_db():
+    """저널 API 테스트 동안만 get_db를 테스트 DB 세션으로 오버라이드(끝나면 원복).
+    모듈 전역 오버라이드는 다른 테스트 파일로 누수되므로 fixture로 set/pop 한다."""
+    app.dependency_overrides[get_db] = _test_get_db
+    yield
+    app.dependency_overrides.pop(get_db, None)
 
 
 @pytest.mark.asyncio

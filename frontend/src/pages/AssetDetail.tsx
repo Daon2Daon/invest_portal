@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
-import type { AssetDetailOut, AlertView } from "../api";
+import type { AssetDetailOut, AlertView, JournalEntry } from "../api";
 import AlertForm, { BASIS_LABEL } from "../components/AlertForm";
 
 const krw = (n: number) => n.toLocaleString("ko-KR", { maximumFractionDigits: 0 });
@@ -22,6 +22,9 @@ export default function AssetDetail() {
   const [schedMsg, setSchedMsg] = useState("");
   const [alerts, setAlerts] = useState<AlertView[]>([]);
   const [aMsg, setAMsg] = useState("");
+  const [journal, setJournal] = useState<JournalEntry[]>([]);
+  const [jForm, setJForm] = useState({ title: "", body: "" });
+  const [jMsg, setJMsg] = useState("");
 
   useEffect(() => {
     if (!assetId) return;
@@ -32,6 +35,7 @@ export default function AssetDetail() {
       setSchedMsg("");
     }).catch(() => {});
     api.listAlerts(assetId).then(setAlerts).catch(() => setAlerts([]));
+    api.listJournal(assetId).then(setJournal).catch(() => setJournal([]));
   }, [assetId]);
 
   const send = async () => {
@@ -66,6 +70,20 @@ export default function AssetDetail() {
   };
   const src = (period: "daily" | "weekly") =>
     assetId ? `${api.chartUrl(assetId, period)}&n=${nonce}` : "";
+
+  const addJournal = async () => {
+    if (!assetId || !jForm.title.trim()) { setJMsg("제목을 입력하세요."); return; }
+    try {
+      await api.createJournal({ asset_id: assetId, title: jForm.title, body: jForm.body || undefined });
+      setJForm({ title: "", body: "" });
+      setJMsg("저장됨");
+      setJournal(await api.listJournal(assetId));
+    } catch (e) { setJMsg(String(e)); }
+  };
+  const removeJournal = async (jid: number) => {
+    await api.deleteJournal(jid);
+    if (assetId) setJournal(await api.listJournal(assetId));
+  };
 
   const reloadAlerts = async () => { if (assetId) setAlerts(await api.listAlerts(assetId)); };
   const rearm = async (id: number) => {
@@ -182,6 +200,30 @@ export default function AssetDetail() {
         </table>
         </div>
       </div>
+
+      <section className="card space-y-2">
+        <h2 className="font-semibold text-muted">투자 메모</h2>
+        <input className="input w-full" placeholder="제목" value={jForm.title}
+               onChange={(e) => setJForm({ ...jForm, title: e.target.value })} />
+        <textarea className="input w-full h-24" placeholder="이 종목에 대한 메모(마크다운)" value={jForm.body}
+                  onChange={(e) => setJForm({ ...jForm, body: e.target.value })} />
+        <div className="flex items-center gap-2">
+          <button className="btn btn-primary" onClick={addJournal}>메모 추가</button>
+          {jMsg && <span className="text-sm text-muted">{jMsg}</span>}
+        </div>
+        <div className="space-y-1">
+          {journal.length === 0 && <p className="text-sm text-muted">이 종목에 대한 메모가 없습니다.</p>}
+          {journal.map((e) => (
+            <div key={e.id} className="border-t pt-1" style={{ borderColor: "var(--border)" }}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm"><span className="text-muted">{e.entry_date}</span> <span className="font-semibold">{e.title}</span></span>
+                <button className="btn btn-ghost text-xs" onClick={() => removeJournal(e.id)}>삭제</button>
+              </div>
+              {e.body && <div className="whitespace-pre-wrap text-sm">{e.body}</div>}
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="space-y-6">
         <div>

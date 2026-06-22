@@ -104,7 +104,7 @@
 - ✅ **증시 마감 요약 푸시** — **구현 완료 (main 병합됨, 2026-06-20, merge `79e641c`)**. spec/plan: `docs/superpowers/{specs,plans}/2026-06-20-market-summary-push*`. US/KR 시장별(지수+보유+관심 일/주/월·52주), `feature_type=market_summary_us/kr`+target_id=0로 기존 schedules 재사용, `market_hours.is_trading_day` 휴장 스킵, `services/market_summary/`+`routers/market_summary.py`+설정 섹션. 백엔드 155 테스트 통과.
 - ⏳ 종목 검색 UX — 자산 등록 시 키워드 검색(KR=pykrx 리스트, US=제한적). 후순위.
 
-## 3단계: AI 리포트 + 투자저널 + 위험신호 — **진행 중(A·B·C 완료)**
+## 3단계: AI 리포트 + 투자저널 + 위험신호 — **완료(A·B·C·D 전부 완료, 2026-06-23)**
 3단계는 4개 독립 하위 시스템으로 분해해 각각 spec→plan→구현 사이클로 진행. 순서: A(스냅샷, 토대)→B/C/D.
 
 ### 3단계 A: 일별 자산추세 스냅샷 — **구현 완료 (2026-06-20)**
@@ -130,8 +130,14 @@
 - **스캔 파이프라인 스모크 완료(2026-06-22, 실 DB)**: 설정 로드(기본값)→get_portfolio→보유 8종목 get_history(pykrx/yfinance)→calculate_indicators→evaluator→다이제스트 전 경로 무오류 검증. 기술 신호는 현 시세상 0건(RSI 35~60·밴드 내·교차 없음 = 정상 true negative, 8종목 모두 80봉 지표 계산 확인), 비중 편향은 정상 발동(삼성전자 53.0%·주식 62.2%). **실 텔레그램 발송/스케줄 자동발송은 프로덕션(사용자) 확인 대기.**
 - 비목표(YAGNI): 기술 임계값 사용자설정, 종목별 opt-in, 엣지트리거 실시간/재무장(가격알림이 담당), 신호 이력 저장·전용 페이지, 현금 과소 신호, 휴장일 캘린더 스킵(요일 설정으로 대체).
 
-### 3단계 D — **미착수**
-- D 투자저널: 기존 테스트 DB `portfolio_plans`(context_date/summary/key_events/decisions/results/notes) 구조 재설계해 도입.
+### 3단계 D: 투자저널 — **구현 완료 (2026-06-23)**
+- spec: `docs/superpowers/specs/2026-06-23-investment-journal-design.md`, plan: `docs/superpowers/plans/2026-06-23-investment-journal.md`
+- 내용: 사용자가 직접 쓰는 자유형 투자 기록. 신규 `journal_entries` 테이블(entry_date·title·body(마크다운, nullable)·`asset_id`(nullable FK→assets, **ON DELETE SET NULL** = 종목 삭제 시 메모 보존)). `routers/journal.py`(`/api/journal` 표준 CRUD: 생성 시 KST 기본날짜·title 필수 422·asset_id 존재검증 422, 목록 최신순+선택 `?asset_id` 필터, get/put/delete 404, 출력에 asset_name·asset_ticker enrich[N+1 회피 _asset_map]). C-lite(엔트리당 종목 1개). 프론트 신규 메뉴 "저널"(`Journal.tsx`: 작성·인라인 수정·삭제·종목 드롭다운) + **AssetDetail "투자 메모" 섹션**(해당 종목 메모 읽기 + 인라인 빠른 작성). 신규 테이블 외 마이그레이션 없음(레거시 `portfolio_plans` 1건 스텁 미이관).
+- 상태: 백엔드 테스트 통과(invest_test, 신규 9), 프론트 빌드·tsc 통과. 서브에이전트 주도 TDD + 최종 홀리스틱 리뷰 "READY TO MERGE"(Critical/Important 0). 리뷰 반영: 저널 테스트의 `get_db` 오버라이드를 모듈 전역→autouse fixture(set/pop)로 격리(타 테스트 누수 방지).
+- **수동 스모크는 사용자 확인 대기**: 저널 작성/수정/삭제·종목 연결 → 자산 상세 "투자 메모" 노출·빠른작성.
+- 비목표(YAGNI): 레거시 마이그레이션, 다중 종목 태그, 첨부/이미지, 전문검색, AI 자동 작성(B 담당), 태그/카테고리, 저널 텔레그램 발송.
+
+## 3단계 완료 — 후속은 포털 통합(아래)
 
 ## 후속: 포털 통합
 - ytdb와 하나의 로그인 베이스 포털(invest/work/personal 메뉴)로 통합.

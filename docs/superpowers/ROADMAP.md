@@ -134,7 +134,7 @@
 - spec: `docs/superpowers/specs/2026-06-23-investment-journal-design.md`, plan: `docs/superpowers/plans/2026-06-23-investment-journal.md`
 - 내용: 사용자가 직접 쓰는 자유형 투자 기록. 신규 `journal_entries` 테이블(entry_date·title·body(마크다운, nullable)·`asset_id`(nullable FK→assets, **ON DELETE SET NULL** = 종목 삭제 시 메모 보존)). `routers/journal.py`(`/api/journal` 표준 CRUD: 생성 시 KST 기본날짜·title 필수 422·asset_id 존재검증 422, 목록 최신순+선택 `?asset_id` 필터, get/put/delete 404, 출력에 asset_name·asset_ticker enrich[N+1 회피 _asset_map]). C-lite(엔트리당 종목 1개). 프론트 신규 메뉴 "저널"(`Journal.tsx`: 작성·인라인 수정·삭제·종목 드롭다운) + **AssetDetail "투자 메모" 섹션**(해당 종목 메모 읽기 + 인라인 빠른 작성). 신규 테이블 외 마이그레이션 없음(레거시 `portfolio_plans` 1건 스텁 미이관).
 - 상태: 백엔드 테스트 통과(invest_test, 신규 9), 프론트 빌드·tsc 통과. 서브에이전트 주도 TDD + 최종 홀리스틱 리뷰 "READY TO MERGE"(Critical/Important 0). 리뷰 반영: 저널 테스트의 `get_db` 오버라이드를 모듈 전역→autouse fixture(set/pop)로 격리(타 테스트 누수 방지).
-- **수동 스모크는 사용자 확인 대기**: 저널 작성/수정/삭제·종목 연결 → 자산 상세 "투자 메모" 노출·빠른작성.
+- **스모크 완료(2026-06-23)**: 백엔드 CRUD를 실 DB(`invest`)로 검증 — ensure_schema가 `journal_entries` 생성, 삼성전자(005930) 연결 항목 생성→asset_name enrich·기본날짜(오늘)→목록·`?asset_id` 필터→부분수정→삭제(get 404)→원복(잔존 0건). 프론트(저널 작성/수정/삭제·종목연결·자산상세 "투자 메모" 노출·빠른작성)도 사용자 브라우저 확인 완료.
 - 비목표(YAGNI): 레거시 마이그레이션, 다중 종목 태그, 첨부/이미지, 전문검색, AI 자동 작성(B 담당), 태그/카테고리, 저널 텔레그램 발송.
 
 ## 3단계 완료 — 후속은 포털 통합(아래)

@@ -17,10 +17,12 @@ def _sign(pct) -> str:
 
 
 def _status(pct) -> str:
-    """종목당 1회만 붙이는 가벼운 등락 표식(일간 기준)."""
+    """종목당 1회만 붙이는 가벼운 등락 표식(일간 기준).
+    한국식 색상 관례: 상승=빨강 삼각형(🔺), 하락=파랑 삼각형(🔽).
+    텔레그램은 텍스트 색을 못 넣으므로 색은 이모지 글리프로 표현한다."""
     if pct is None:
         return "·"
-    return "▲" if pct >= 0 else "▼"
+    return "🔺" if pct >= 0 else "🔽"
 
 
 def build_message(market: str, indices: list[dict],

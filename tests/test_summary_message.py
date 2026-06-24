@@ -13,7 +13,7 @@ def test_message_kr_holdings_and_index():
     assert "한국 증시 마감 요약" in msg
     assert "KOSPI" in msg and "2,800" in msg
     assert "삼성전자" in msg and "59,500원" in msg
-    assert "▲" in msg or "▼" in msg  # 종목 등락 표식(이모지 대체)
+    assert "🔺" in msg or "🔽" in msg  # 종목 등락 표식(상승 빨강🔺 / 하락 파랑🔽)
     assert "📈" not in msg and "📉" not in msg  # 중복 화살표 이모지 제거
     assert "52주 고점 대비" in msg
 

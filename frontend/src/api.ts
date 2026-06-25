@@ -1,3 +1,9 @@
+// 세션 만료 등으로 임의 API가 401을 반환할 때 호출되는 전역 핸들러(AuthProvider가 등록).
+let onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(fn: (() => void) | null) {
+  onUnauthorized = fn;
+}
+
 // 빈 문자열 = 같은 오리진. 프로덕션(Docker)에선 FastAPI가 SPA·API를 함께 서빙하고,
 // dev에선 Vite 프록시(/api → :8000)가 처리한다.
 const BASE = "";
@@ -7,9 +13,27 @@ async function j<T>(p: string, init?: RequestInit): Promise<T> {
   const r = await fetch(BASE + p, {
     headers: { "Content-Type": "application/json" }, ...init,
   });
+  // /auth/ 호출(로그인 시도 등)의 401은 전역 핸들러로 넘기지 않는다.
+  if (r.status === 401 && !p.includes("/auth/")) onUnauthorized?.();
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  if (r.status === 204) return undefined as T;
   return r.json();
 }
+
+export interface MeResponse {
+  auth_enabled: boolean;
+  authenticated: boolean;
+  username: string | null;
+}
+
+export const authApi = {
+  me: () => j<MeResponse>("/api/auth/me"),
+  login: (username: string, password: string) =>
+    j<{ username: string }>("/api/auth/login", {
+      method: "POST", body: JSON.stringify({ username, password }),
+    }),
+  logout: () => j<void>("/api/auth/logout", { method: "POST" }),
+};
 
 export const api = {
   resolve: (ticker: string, market: string, asset_type?: string) =>

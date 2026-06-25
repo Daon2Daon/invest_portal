@@ -13,8 +13,8 @@ async function j<T>(p: string, init?: RequestInit): Promise<T> {
   const r = await fetch(BASE + p, {
     headers: { "Content-Type": "application/json" }, ...init,
   });
-  // /auth/ 호출(로그인 시도 등)의 401은 전역 핸들러로 넘기지 않는다.
-  if (r.status === 401 && !p.includes("/auth/")) onUnauthorized?.();
+  // /api/auth/ 호출(로그인 시도 등)의 401은 전역 핸들러로 넘기지 않는다.
+  if (r.status === 401 && !p.startsWith("/api/auth/")) onUnauthorized?.();
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
   if (r.status === 204) return undefined as T;
   return r.json();

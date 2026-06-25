@@ -139,6 +139,13 @@
 
 ## 3단계 완료 — 후속은 포털 통합(아래)
 
+## 로그인 인증 — **구현 완료 (main 병합됨, 2026-06-26, merge `9566007`)**
+- spec: `docs/superpowers/specs/2026-06-26-login-auth-design.md`, plan: `docs/superpowers/plans/2026-06-26-login-auth.md`
+- 내용: ytdb와 **동일한 단일 계정 세션 쿠키 인증**을 이식(추후 포털 통합 대비). `AUTH_PASSWORD` 비면 인증 비활성(개발), 설정 시 모든 `/api` 데이터 접근에 로그인 강제. 상수시간 비교(`secrets.compare_digest`). config 4필드(`AUTH_USERNAME/AUTH_PASSWORD/SESSION_SECRET/SESSION_HTTPS_ONLY`), `routers/auth.py`(`require_auth`/`auth_enabled` + `GET /api/auth/me`·`POST /api/auth/login`·`/logout`), `main.py` Starlette `SessionMiddleware`(secret=SESSION_SECRET→FERNET_KEY→임시, same_site=lax) + 데이터 라우터 `Depends(require_auth)` 보호(auth 라우터만 무보호), `itsdangerous` 의존성 추가. 프론트 `auth/{AuthProvider,useAuth}`·`pages/Login.tsx`·`api.ts` 401 핸들러(`startsWith("/api/auth/")` 제외)+`authApi`, `main.tsx` AuthProvider 래핑, `AppShell` 사이드바/탭바 로그아웃(방식 A, 인증 비활성 시 미표시).
+- 상태: 백엔드 **250 테스트 통과**(invest_test, 신규 auth 7건), 프론트 빌드·tsc 통과. 서브에이전트 주도 TDD + 최종 홀리스틱 리뷰(opus) "READY TO MERGE"(Critical/Important 0).
+- 비목표(YAGNI): 다중 사용자·역할, JWT, 회원가입, 비밀번호 해싱·변경 UI, "로그인 유지".
+- **수동 스모크(사용자 확인 대기)**: `.env`에 `AUTH_PASSWORD` 설정 후 로그인/로그아웃/세션만료 흐름. 미설정(개발) 시 로그인 화면 없이 진입·로그아웃 버튼 미표시.
+
 ## 후속: 포털 통합
 - ytdb와 하나의 로그인 베이스 포털(invest/work/personal 메뉴)로 통합.
-- 같은 PG 서버 공유. 1단계에서 ytdb의 다중그룹 제어평면은 제외했으므로, 통합 시 인증/메뉴 레이어를 별도 설계.
+- 같은 PG 서버 공유. 1단계에서 ytdb의 다중그룹 제어평면은 제외했으므로, 통합 시 인증/메뉴 레이어를 별도 설계. **인증은 이제 ytdb와 동일 구조(세션 쿠키)라 공통 레이어로 합치기 쉬움** — 같은 도메인 통합 시 쿠키 이름/스코프 충돌만 별도 설계.

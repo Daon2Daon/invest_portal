@@ -1,15 +1,19 @@
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 
+from app.config import settings as app_settings
 from app.db import engine
 from app.bootstrap import ensure_schema
 from app.services.scheduler.scheduler import start_scheduler, shutdown_scheduler
-from app.routers import assets, holdings, portfolio, fx, settings as settings_router, cash, charts, watchlist, alerts, market_summary, trend, reports, risk_signal, journal
+from app.routers import assets, holdings, portfolio, fx, settings as settings_router, cash, charts, watchlist, alerts, market_summary, trend, reports, risk_signal, journal, auth
+from app.routers.auth import require_auth
 
 STATIC_DIR = Path(__file__).parent / "static"
 UI_DIR = STATIC_DIR / "ui"
@@ -26,6 +30,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="invest_portal", lifespan=lifespan)
 
+# 세션 미들웨어(서명된 httpOnly 쿠키). 비밀키는 SESSION_SECRET → FERNET_KEY → 임시생성.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=(app_settings.SESSION_SECRET or app_settings.FERNET_KEY or secrets.token_urlsafe(32)),
+    https_only=app_settings.SESSION_HTTPS_ONLY,
+    same_site="lax",
+)
+
 # 개발 시 Vite dev 서버(5173)에서 직접 호출하는 경우를 위해 허용.
 # 프로덕션(Docker)에서는 FastAPI가 SPA를 같은 오리진으로 서빙하므로 CORS가 불필요하다.
 app.add_middleware(
@@ -34,8 +46,12 @@ app.add_middleware(
     allow_methods=["*"], allow_headers=["*"],
 )
 
+# 인증 라우터는 무보호(로그인/상태 확인). 나머지 데이터 라우터는 require_auth로 보호.
+app.include_router(auth.router)
+
+_protected = [Depends(require_auth)]
 for r in (assets.router, holdings.router, portfolio.router, fx.router, settings_router.router, cash.router, charts.router, watchlist.router, alerts.router, market_summary.router, trend.router, reports.router, risk_signal.router, journal.router):
-    app.include_router(r)
+    app.include_router(r, dependencies=_protected)
 
 
 @app.get("/health")

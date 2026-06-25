@@ -27,3 +27,60 @@ def test_auth_enabled_blocks_anonymous(monkeypatch):
 def test_auth_enabled_allows_session_user(monkeypatch):
     monkeypatch.setattr(auth.app_settings, "AUTH_PASSWORD", "secret")
     auth.require_auth(_fake_request({"user": "admin"}))  # 예외 없으면 통과
+
+
+from httpx import AsyncClient, ASGITransport
+from app.main import app
+
+
+async def _client():
+    return AsyncClient(transport=ASGITransport(app=app), base_url="http://t")
+
+
+@pytest.mark.asyncio
+async def test_me_anonymous_when_enabled(monkeypatch):
+    monkeypatch.setattr(auth.app_settings, "AUTH_PASSWORD", "secret")
+    async with await _client() as ac:
+        r = await ac.get("/api/auth/me")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["auth_enabled"] is True
+    assert body["authenticated"] is False
+    assert body["username"] is None
+
+
+@pytest.mark.asyncio
+async def test_login_then_me_then_logout(monkeypatch):
+    monkeypatch.setattr(auth.app_settings, "AUTH_PASSWORD", "secret")
+    monkeypatch.setattr(auth.app_settings, "AUTH_USERNAME", "admin")
+    async with await _client() as ac:
+        bad = await ac.post("/api/auth/login", json={"username": "admin", "password": "wrong"})
+        assert bad.status_code == 401
+
+        ok = await ac.post("/api/auth/login", json={"username": "admin", "password": "secret"})
+        assert ok.status_code == 200 and ok.json()["username"] == "admin"
+
+        me = await ac.get("/api/auth/me")
+        assert me.json()["authenticated"] is True and me.json()["username"] == "admin"
+
+        out = await ac.post("/api/auth/logout")
+        assert out.status_code == 204
+
+        me2 = await ac.get("/api/auth/me")
+        assert me2.json()["authenticated"] is False
+
+
+@pytest.mark.asyncio
+async def test_protected_route_blocks_anonymous(monkeypatch):
+    monkeypatch.setattr(auth.app_settings, "AUTH_PASSWORD", "secret")
+    async with await _client() as ac:
+        r = await ac.get("/api/portfolio")
+    assert r.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_protected_route_open_when_auth_disabled(monkeypatch):
+    monkeypatch.setattr(auth.app_settings, "AUTH_PASSWORD", "")
+    async with await _client() as ac:
+        r = await ac.get("/api/auth/me")
+    assert r.status_code == 200 and r.json()["auth_enabled"] is False

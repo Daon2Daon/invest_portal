@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { currentTheme, setTheme } from "../theme";
+import { useAuth } from "../auth/useAuth";
 
 const NAV = [
   { to: "/", label: "포트폴리오", end: true },
@@ -20,6 +21,19 @@ function ThemeToggle() {
     <button onClick={flip} aria-label="테마 전환" title="테마 전환" className="btn btn-ghost text-sm">
       {t === "dark" ? "☀️ 라이트" : "🌙 다크"}
     </button>
+  );
+}
+
+function LogoutButton() {
+  const { authEnabled, username, logout } = useAuth();
+  if (!authEnabled) return null;
+  return (
+    <div className="flex items-center gap-2">
+      {username && <span className="text-sm text-muted truncate">{username}</span>}
+      <button onClick={() => logout()} className="btn btn-ghost text-sm" title="로그아웃">
+        로그아웃
+      </button>
+    </div>
   );
 }
 
@@ -45,7 +59,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <header className="lg:hidden border-b border-border bg-surface">
         <div className="flex items-center justify-between px-4 py-3">
           <span className="font-extrabold">invest</span>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <LogoutButton />
+          </div>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-2 pb-2">{links()}</nav>
       </header>
@@ -56,7 +73,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <span className="font-extrabold">💰 invest</span>
         </div>
         <nav className="flex-1 space-y-1">{links()}</nav>
-        <div className="pt-4"><ThemeToggle /></div>
+        <div className="pt-4 space-y-3">
+          <LogoutButton />
+          <ThemeToggle />
+        </div>
       </aside>
 
       <main className="flex-1 min-w-0">{children}</main>

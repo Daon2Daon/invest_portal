@@ -1,7 +1,37 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
 
 const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
+
+function StatusBadge({ on, onText, offText }: { on: boolean; onText: string; offText: string }) {
+  if (on) return <span className="badge">{onText}</span>;
+  return (
+    <span className="rounded-full px-2 py-0.5 text-xs font-semibold"
+      style={{ border: "1px solid var(--border)", color: "var(--muted)" }}>{offText}</span>
+  );
+}
+
+function Section({ title, badge, defaultOpen = false, children }:
+  { title: string; badge?: ReactNode; defaultOpen?: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="card">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 text-left">
+        <span className="flex items-center gap-2">
+          <span className="font-semibold">{title}</span>
+          {badge}
+        </span>
+        <span className="text-sm text-muted">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && <div className="mt-3 space-y-2">{children}</div>}
+    </div>
+  );
+}
+
+function GroupHeader({ children }: { children: ReactNode }) {
+  return <h2 className="mt-4 mb-1 text-sm font-bold text-muted">{children}</h2>;
+}
 
 function MarketSummaryBlock({ market, label }: { market: string; label: string }) {
   const [time, setTime] = useState("08:30");
@@ -68,10 +98,11 @@ export default function Settings() {
   const [tokenSet, setTokenSet] = useState(false);
   const [tgMsg, setTgMsg] = useState("");
 
-  // AI
+  // AI 게이트웨이 연결(공유) + AI 차트분석
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [apiKeySet, setApiKeySet] = useState(false);
+  const [gwMsg, setGwMsg] = useState("");
   const [model, setModel] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [prompt, setPrompt] = useState("");
@@ -126,11 +157,17 @@ export default function Settings() {
     setTgMsg("저장됨"); await load();
   };
 
-  const saveAi = async () => {
-    setAiMsg("저장 중…");
-    const payload: any = { base_url: baseUrl, model, prompt, enabled };
+  const saveGateway = async () => {
+    setGwMsg("저장 중…");
+    const payload: any = { base_url: baseUrl };
     if (apiKey) payload.api_key = apiKey;
     await api.saveAi(payload);
+    setGwMsg("저장됨"); await load();
+  };
+
+  const saveAi = async () => {
+    setAiMsg("저장 중…");
+    await api.saveAi({ model, prompt, enabled });
     setAiMsg("저장됨"); await load();
   };
 
@@ -158,21 +195,34 @@ export default function Settings() {
   };
 
   const refreshModels = async () => {
-    setAiMsg("모델 조회 중…");
+    setGwMsg("모델 조회 중…");
     try {
       const r = await api.listAiModels();
       setModels(r.models);
       if (!model && r.models.length > 0) setModel(r.models[0]);
-      setAiMsg(r.error ? `조회 실패: ${r.error}` : `${r.models.length}개 모델`);
-    } catch (e: any) { setAiMsg("조회 실패: " + e.message); }
+      setGwMsg(r.error ? `조회 실패: ${r.error}` : `${r.models.length}개 모델`);
+    } catch (e: any) { setGwMsg("조회 실패: " + e.message); }
   };
 
+  const modelSelect = (value: string, onChange: (v: string) => void) =>
+    models.length > 0 ? (
+      <select className="input flex-1" value={value} onChange={(e) => onChange(e.target.value)}>
+        {!models.includes(value) && value && <option value={value}>{value}</option>}
+        {models.map((m) => <option key={m} value={m}>{m}</option>)}
+      </select>
+    ) : (
+      <input className="input flex-1" placeholder="gemini/gemini-2.5-flash"
+        value={value} onChange={(e) => onChange(e.target.value)} />
+    );
+
   return (
-    <div className="p-6 space-y-6 max-w-xl">
+    <div className="p-6 space-y-2 max-w-xl">
       <h1 className="text-xl font-bold">설정</h1>
 
-      <section className="space-y-2">
-        <h2 className="font-semibold text-muted">텔레그램</h2>
+      {/* ───── 연결 ───── */}
+      <GroupHeader>연결</GroupHeader>
+
+      <Section title="텔레그램" badge={<StatusBadge on={tokenSet} onText="설정됨" offText="미설정" />}>
         <div className="flex gap-2 items-center">
           <label className="w-28 text-sm">봇 토큰</label>
           <input className="input flex-1" type="password"
@@ -186,10 +236,11 @@ export default function Settings() {
         </div>
         <button onClick={saveTg} className="btn btn-primary">저장</button>
         {tgMsg && <span className="text-sm text-muted ml-2">{tgMsg}</span>}
-      </section>
+      </Section>
 
-      <section className="space-y-2">
-        <h2 className="font-semibold text-muted">AI 분석</h2>
+      <Section title="AI 게이트웨이 연결"
+        badge={<StatusBadge on={!!baseUrl && apiKeySet} onText="연결됨" offText="미설정" />}>
+        <p className="text-xs text-muted">아래 'AI 차트분석'과 'AI 리포트'가 이 연결을 공유합니다.</p>
         <div className="flex gap-2 items-center">
           <label className="w-28 text-sm">게이트웨이 URL</label>
           <input className="input flex-1" placeholder="http://gateway:4000"
@@ -202,18 +253,19 @@ export default function Settings() {
             value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
         </div>
         <div className="flex gap-2 items-center">
-          <label className="w-28 text-sm">모델</label>
-          {models.length > 0 ? (
-            <select className="input flex-1" value={model}
-              onChange={(e) => setModel(e.target.value)}>
-              {!models.includes(model) && model && <option value={model}>{model}</option>}
-              {models.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          ) : (
-            <input className="input flex-1" placeholder="gemini/gemini-2.5-flash"
-              value={model} onChange={(e) => setModel(e.target.value)} />
-          )}
+          <button onClick={saveGateway} className="btn btn-primary">연결 저장</button>
           <button onClick={refreshModels} className="btn text-sm whitespace-nowrap">모델 새로고침</button>
+          {gwMsg && <span className="text-sm text-muted">{gwMsg}</span>}
+        </div>
+      </Section>
+
+      {/* ───── AI 기능 ───── */}
+      <GroupHeader>AI 기능</GroupHeader>
+
+      <Section title="AI 차트분석" badge={<StatusBadge on={enabled} onText="켜짐" offText="꺼짐" />}>
+        <div className="flex gap-2 items-center">
+          <label className="w-28 text-sm">모델</label>
+          {modelSelect(model, setModel)}
         </div>
         <div>
           <label className="text-sm block mb-1">프롬프트 (비우면 기본 프롬프트 사용)</label>
@@ -226,23 +278,12 @@ export default function Settings() {
         </label>
         <button onClick={saveAi} className="btn btn-primary">저장</button>
         {aiMsg && <span className="text-sm text-muted ml-2">{aiMsg}</span>}
-      </section>
+      </Section>
 
-      <section className="space-y-2">
-        <h2 className="font-semibold text-muted">AI 리포트</h2>
-        <p className="text-xs text-muted">게이트웨이 URL·API 키는 위 'AI 분석' 섹션에서 공유합니다.</p>
+      <Section title="AI 리포트" badge={<StatusBadge on={reportEnabled} onText="켜짐" offText="꺼짐" />}>
         <div className="flex gap-2 items-center">
           <label className="w-28 text-sm">모델</label>
-          {models.length > 0 ? (
-            <select className="input flex-1" value={reportModel}
-              onChange={(e) => setReportModel(e.target.value)}>
-              {!models.includes(reportModel) && reportModel && <option value={reportModel}>{reportModel}</option>}
-              {models.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          ) : (
-            <input className="input flex-1" placeholder="gemini/gemini-2.5-flash"
-              value={reportModel} onChange={(e) => setReportModel(e.target.value)} />
-          )}
+          {modelSelect(reportModel, setReportModel)}
         </div>
         <div>
           <label className="text-sm block mb-1">프롬프트</label>
@@ -279,10 +320,12 @@ export default function Settings() {
             {schedMsg && <span className="text-sm text-muted">{schedMsg}</span>}
           </div>
         </div>
-      </section>
+      </Section>
 
-      <section className="space-y-3">
-        <h2 className="font-semibold text-muted">위험신호</h2>
+      {/* ───── 자동 발송/알림 ───── */}
+      <GroupHeader>자동 발송 / 알림</GroupHeader>
+
+      <Section title="위험신호" badge={<StatusBadge on={risk.enabled} onText="켜짐" offText="꺼짐" />}>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={risk.enabled}
                  onChange={(e) => setRisk({ ...risk, enabled: e.target.checked })} />
@@ -355,13 +398,12 @@ export default function Settings() {
           <button className="btn" onClick={doRiskSend}>지금 보내기</button>
         </div>
         {riskPreview && <div className="card whitespace-pre-wrap text-sm">{riskPreview}</div>}
-      </section>
+      </Section>
 
-      <section className="space-y-2">
-        <h2 className="font-semibold text-muted">증시 마감 요약</h2>
+      <Section title="증시 마감 요약">
         <MarketSummaryBlock market="US" label="미국 증시 (US)" />
         <MarketSummaryBlock market="KR" label="한국 증시 (KR)" />
-      </section>
+      </Section>
     </div>
   );
 }

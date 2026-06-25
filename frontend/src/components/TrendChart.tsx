@@ -37,7 +37,8 @@ export default function TrendChart() {
         <div className="flex gap-1">
           {PERIODS.map((p) => (
             <button key={p} onClick={() => setPeriod(p)}
-              className={`badge ${p === period ? "btn-primary" : ""}`}>{p}</button>
+              aria-pressed={p === period}
+              className={`btn text-xs px-2 py-1 ${p === period ? "btn-primary" : "btn-ghost"}`}>{p}</button>
           ))}
         </div>
       </div>

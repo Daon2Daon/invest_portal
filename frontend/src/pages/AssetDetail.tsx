@@ -196,27 +196,40 @@ export default function AssetDetail() {
         </div>
       )}
 
-      <div className="card max-w-3xl space-y-2">
-        <h2 className="font-semibold text-muted">자동 발송 스케줄</h2>
-        <div className="flex items-center gap-2 flex-wrap">
-          <label className="text-sm">발송 시각</label>
-          <input type="time" className="input" value={schedTime} onChange={(e) => setSchedTime(e.target.value)} />
-          <span className="text-xs text-muted">(KST)</span>
+      <section className="card space-y-2">
+        <h2 className="font-semibold text-muted">투자 메모</h2>
+        <input className="input w-full" placeholder="제목" value={jForm.title}
+               onChange={(e) => setJForm({ ...jForm, title: e.target.value })} />
+        <textarea className="input w-full h-24" placeholder="이 종목에 대한 메모(마크다운)" value={jForm.body}
+                  onChange={(e) => setJForm({ ...jForm, body: e.target.value })} />
+        <div className="flex items-center gap-2">
+          <button className="btn btn-primary" onClick={addJournal}>메모 추가</button>
+          {jMsg && <span className="text-sm text-muted">{jMsg}</span>}
         </div>
-        <div className="flex items-center gap-1 flex-wrap">
-          {DAY_LABELS.map((lbl, d) => (
-            <button key={d} type="button" onClick={() => toggleDay(d)}
-              className={schedDays.includes(d) ? "btn btn-primary" : "btn"}>{lbl}</button>
+        <div className="space-y-1">
+          {journal.length === 0 && <p className="text-sm text-muted">이 종목에 대한 메모가 없습니다.</p>}
+          {journal.map((e) => (
+            <div key={e.id} className="border-t pt-1" style={{ borderColor: "var(--border)" }}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm"><span className="text-muted">{e.entry_date}</span> <span className="font-semibold">{e.title}</span></span>
+                <button className="btn btn-ghost text-xs" onClick={() => removeJournal(e.id)}>삭제</button>
+              </div>
+              {e.body && <div className="whitespace-pre-wrap text-sm">{e.body}</div>}
+            </div>
           ))}
         </div>
-        <label className="flex gap-2 items-center text-sm">
-          <input type="checkbox" checked={schedEnabled} onChange={(e) => setSchedEnabled(e.target.checked)} />
-          스케줄 활성화
-        </label>
-        <div className="flex gap-2 items-center">
-          <button onClick={saveSched} className="btn btn-primary">저장</button>
-          <button onClick={deleteSched} className="btn">삭제</button>
-          {schedMsg && <span className="text-sm text-muted">{schedMsg}</span>}
+      </section>
+
+      <div className="space-y-6">
+        <div>
+          <h2 className="font-semibold mb-1">일봉</h2>
+          <img src={src("daily")} alt="daily chart" className="max-w-full border rounded"
+            onError={(e) => ((e.target as HTMLImageElement).alt = "차트를 가져올 수 없습니다(수동/이력없음 자산일 수 있음)")} />
+        </div>
+        <div>
+          <h2 className="font-semibold mb-1">주봉</h2>
+          <img src={src("weekly")} alt="weekly chart" className="max-w-full border rounded"
+            onError={(e) => ((e.target as HTMLImageElement).alt = "차트를 가져올 수 없습니다(수동/이력없음 자산일 수 있음)")} />
         </div>
       </div>
 
@@ -257,40 +270,27 @@ export default function AssetDetail() {
         </div>
       </div>
 
-      <section className="card space-y-2">
-        <h2 className="font-semibold text-muted">투자 메모</h2>
-        <input className="input w-full" placeholder="제목" value={jForm.title}
-               onChange={(e) => setJForm({ ...jForm, title: e.target.value })} />
-        <textarea className="input w-full h-24" placeholder="이 종목에 대한 메모(마크다운)" value={jForm.body}
-                  onChange={(e) => setJForm({ ...jForm, body: e.target.value })} />
-        <div className="flex items-center gap-2">
-          <button className="btn btn-primary" onClick={addJournal}>메모 추가</button>
-          {jMsg && <span className="text-sm text-muted">{jMsg}</span>}
+      <div className="card max-w-3xl space-y-2">
+        <h2 className="font-semibold text-muted">자동 발송 스케줄</h2>
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="text-sm">발송 시각</label>
+          <input type="time" className="input" value={schedTime} onChange={(e) => setSchedTime(e.target.value)} />
+          <span className="text-xs text-muted">(KST)</span>
         </div>
-        <div className="space-y-1">
-          {journal.length === 0 && <p className="text-sm text-muted">이 종목에 대한 메모가 없습니다.</p>}
-          {journal.map((e) => (
-            <div key={e.id} className="border-t pt-1" style={{ borderColor: "var(--border)" }}>
-              <div className="flex items-center justify-between">
-                <span className="text-sm"><span className="text-muted">{e.entry_date}</span> <span className="font-semibold">{e.title}</span></span>
-                <button className="btn btn-ghost text-xs" onClick={() => removeJournal(e.id)}>삭제</button>
-              </div>
-              {e.body && <div className="whitespace-pre-wrap text-sm">{e.body}</div>}
-            </div>
+        <div className="flex items-center gap-1 flex-wrap">
+          {DAY_LABELS.map((lbl, d) => (
+            <button key={d} type="button" onClick={() => toggleDay(d)}
+              className={schedDays.includes(d) ? "btn btn-primary" : "btn"}>{lbl}</button>
           ))}
         </div>
-      </section>
-
-      <div className="space-y-6">
-        <div>
-          <h2 className="font-semibold mb-1">일봉</h2>
-          <img src={src("daily")} alt="daily chart" className="max-w-full border rounded"
-            onError={(e) => ((e.target as HTMLImageElement).alt = "차트를 가져올 수 없습니다(수동/이력없음 자산일 수 있음)")} />
-        </div>
-        <div>
-          <h2 className="font-semibold mb-1">주봉</h2>
-          <img src={src("weekly")} alt="weekly chart" className="max-w-full border rounded"
-            onError={(e) => ((e.target as HTMLImageElement).alt = "차트를 가져올 수 없습니다(수동/이력없음 자산일 수 있음)")} />
+        <label className="flex gap-2 items-center text-sm">
+          <input type="checkbox" checked={schedEnabled} onChange={(e) => setSchedEnabled(e.target.checked)} />
+          스케줄 활성화
+        </label>
+        <div className="flex gap-2 items-center">
+          <button onClick={saveSched} className="btn btn-primary">저장</button>
+          <button onClick={deleteSched} className="btn">삭제</button>
+          {schedMsg && <span className="text-sm text-muted">{schedMsg}</span>}
         </div>
       </div>
     </div>

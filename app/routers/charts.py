@@ -9,6 +9,7 @@ from app.models import Asset
 from app.services.chart.chart_builder import build_png, ChartDataError
 from app.services.notification import telegram_service, chart_dispatch
 from app.services.ai import chart_analyzer
+from app.services.ai import analysis_store
 from app.services.ai.llm_client import LiteLLMError
 import re
 from pydantic import BaseModel, field_validator
@@ -43,12 +44,31 @@ async def analyze(asset_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "asset not found")
     images = [(await _build_png(db, asset_id, p), "image/png") for p in ("daily", "weekly")]
     try:
-        text = await chart_analyzer.analyze_raw(db, images, asset.ticker, asset.name, asset.market)
+        text, model = await chart_analyzer.analyze_raw(db, images, asset.ticker, asset.name, asset.market)
     except (chart_analyzer.AnalysisDisabled, chart_analyzer.AnalysisNotConfigured) as e:
         raise HTTPException(409, str(e))
     except LiteLLMError as e:
         raise HTTPException(502, str(e))
-    return {"analysis": text}
+    row = await analysis_store.create_and_prune(db, asset_id, text, model, trigger="manual")
+    return {"analysis": text, "id": row.id, "created_at": row.created_at}
+
+
+@router.get("/{asset_id}/analyses")
+async def list_analyses(asset_id: int, limit: int = Query(20, ge=1, le=100),
+                        db: AsyncSession = Depends(get_db)):
+    rows = await analysis_store.list_for_asset(db, asset_id, limit=limit)
+    return [
+        {"id": r.id, "asset_id": r.asset_id, "content_md": r.content_md,
+         "model": r.model, "trigger": r.trigger, "created_at": r.created_at}
+        for r in rows
+    ]
+
+
+@router.delete("/analyses/{analysis_id}")
+async def delete_analysis(analysis_id: int, db: AsyncSession = Depends(get_db)):
+    if not await analysis_store.delete(db, analysis_id):
+        raise HTTPException(404, "analysis not found")
+    return {"ok": True}
 
 
 @router.post("/{asset_id}/send-telegram")

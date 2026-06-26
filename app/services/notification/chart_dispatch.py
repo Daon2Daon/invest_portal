@@ -8,12 +8,14 @@ from app.services.chart.chart_builder import build_png
 from app.services.market.quote_service import get_quote
 from app.services.notification import telegram_service
 from app.services.ai import chart_analyzer
+from app.services.ai import telegram_md
+from app.services.ai import analysis_store
 
 _log = logging.getLogger(__name__)
 
 
-async def send_chart_telegram(db: AsyncSession, asset) -> dict:
-    """일봉/주봉 발송 후 AI 분석을 best-effort로 발송. TelegramNotConfigured·ChartDataError는 전파."""
+async def send_chart_telegram(db: AsyncSession, asset, trigger: str = "manual") -> dict:
+    """일봉/주봉 발송 후 AI 분석을 best-effort로 저장·발송. TelegramNotConfigured·ChartDataError는 전파."""
     quote = await get_quote(asset)
     caption = f"<b>{asset.name}</b> ({asset.ticker}·{asset.market})\n현재가: {quote.price:,} {asset.currency}"
     images: list[tuple[bytes, str]] = []
@@ -29,7 +31,12 @@ async def send_chart_telegram(db: AsyncSession, asset) -> dict:
 
     analysis_sent = False
     try:
-        parts = await chart_analyzer.analyze(db, images, asset.ticker, asset.name, asset.market)
+        raw, model = await chart_analyzer.analyze_raw(db, images, asset.ticker, asset.name, asset.market)
+        try:
+            await analysis_store.create_and_prune(db, asset.asset_id, raw, model, trigger=trigger)
+        except Exception as e:   # noqa: BLE001 — 저장 실패가 발송을 막지 않도록
+            _log.warning("AI 분석 저장 실패(발송은 진행): %s", e)
+        parts = telegram_md.split_message(telegram_md.md_to_telegram_html(raw))
         for i, part in enumerate(parts):
             if i > 0:
                 await asyncio.sleep(1)

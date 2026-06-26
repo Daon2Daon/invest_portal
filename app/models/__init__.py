@@ -9,7 +9,8 @@ from app.models.price_alert import PriceAlert
 from app.models.portfolio_snapshot import PortfolioSnapshot
 from app.models.ai_report import AIReport
 from app.models.journal_entry import JournalEntry
+from app.models.asset_ai_analysis import AssetAIAnalysis
 
 __all__ = ["Asset", "ExchangeRate", "PriceSnapshot", "Holding", "AppSetting",
            "CashBalance", "Schedule", "PriceAlert", "PortfolioSnapshot", "AIReport",
-           "JournalEntry"]
+           "JournalEntry", "AssetAIAnalysis"]

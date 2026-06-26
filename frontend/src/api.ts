@@ -35,6 +35,15 @@ export const authApi = {
   logout: () => j<void>("/api/auth/logout", { method: "POST" }),
 };
 
+export type AssetAnalysis = {
+  id: number;
+  asset_id: number;
+  content_md: string;
+  model: string;
+  trigger: string;
+  created_at: string;
+};
+
 export const api = {
   resolve: (ticker: string, market: string, asset_type?: string) =>
     j<ResolveResponse>("/api/assets/resolve", { method: "POST", body: JSON.stringify({ ticker, market, asset_type }) }),
@@ -63,7 +72,12 @@ export const api = {
   saveAi: (a: { base_url?: string; api_key?: string; model?: string; prompt?: string; enabled?: boolean }) =>
     j("/api/settings/ai", { method: "PUT", body: JSON.stringify(a) }),
   listAiModels: () => j<{ models: string[]; error?: string }>("/api/settings/ai/models"),
-  analyzeChart: (id: number) => j<{ analysis: string }>(`/api/charts/${id}/analyze`, { method: "POST" }),
+  analyzeChart: (id: number) =>
+    j<{ analysis: string; id: number; created_at: string }>(`/api/charts/${id}/analyze`, { method: "POST" }),
+  listAnalyses: (id: number, limit = 20) =>
+    j<AssetAnalysis[]>(`/api/charts/${id}/analyses?limit=${limit}`),
+  deleteAnalysis: (id: number) =>
+    j<{ ok: boolean }>(`/api/charts/analyses/${id}`, { method: "DELETE" }),
   getSchedule: (id: number) =>
     j<{ send_time: string; days_of_week: number[]; enabled: boolean } | null>(`/api/charts/${id}/schedule`),
   saveSchedule: (id: number, s: { send_time: string; days_of_week: number[]; enabled: boolean }) =>

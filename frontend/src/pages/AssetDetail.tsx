@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
-import type { AssetDetailOut, AlertView, JournalEntry } from "../api";
+import type { AssetDetailOut, AlertView, JournalEntry, AssetAnalysis } from "../api";
 import AlertForm, { BASIS_LABEL } from "../components/AlertForm";
+import ReactMarkdown from "react-markdown";
 
 const krw = (n: number) => n.toLocaleString("ko-KR", { maximumFractionDigits: 0 });
 const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -14,7 +15,8 @@ export default function AssetDetail() {
   const [detail, setDetail] = useState<AssetDetailOut | null>(null);
   const [nonce, setNonce] = useState(() => Date.now());
   const [msg, setMsg] = useState("");
-  const [analysis, setAnalysis] = useState("");
+  const [analyses, setAnalyses] = useState<AssetAnalysis[]>([]);
+  const [openIds, setOpenIds] = useState<Set<number>>(new Set());
   const [analyzing, setAnalyzing] = useState(false);
   const [schedTime, setSchedTime] = useState("08:30");
   const [schedDays, setSchedDays] = useState<number[]>([0, 1, 2, 3, 4]);
@@ -36,6 +38,10 @@ export default function AssetDetail() {
     }).catch(() => {});
     api.listAlerts(assetId).then(setAlerts).catch(() => setAlerts([]));
     api.listJournal(assetId).then(setJournal).catch(() => setJournal([]));
+    api.listAnalyses(assetId).then((rows) => {
+      setAnalyses(rows);
+      setOpenIds(new Set(rows[0] ? [rows[0].id] : []));   // 최신 1건만 펼침
+    }).catch(() => setAnalyses([]));
   }, [assetId]);
 
   const send = async () => {
@@ -49,10 +55,29 @@ export default function AssetDetail() {
   };
   const analyze = async () => {
     if (!assetId) return;
-    setAnalyzing(true); setAnalysis(""); setMsg("");
-    try { setAnalysis((await api.analyzeChart(assetId)).analysis); }
-    catch (e: any) { setAnalysis("분석 실패: " + e.message); }
-    finally { setAnalyzing(false); }
+    setAnalyzing(true); setMsg("");
+    try {
+      await api.analyzeChart(assetId);
+      const rows = await api.listAnalyses(assetId);
+      setAnalyses(rows);
+      setOpenIds(new Set(rows[0] ? [rows[0].id] : []));   // 최신 1건 펼침
+    } catch (e: any) {
+      setMsg("분석 실패: " + e.message);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+  const toggleAnalysis = (id: number) =>
+    setOpenIds((s) => {
+      const n = new Set(s);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  const removeAnalysis = async (id: number) => {
+    try {
+      await api.deleteAnalysis(id);
+      setAnalyses((rows) => rows.filter((r) => r.id !== id));
+    } catch (e: any) { setMsg("삭제 실패: " + e.message); }
   };
   const toggleDay = (d: number) =>
     setSchedDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort());
@@ -136,8 +161,39 @@ export default function AssetDetail() {
         {msg && <span className="text-sm text-muted">{msg}</span>}
       </div>
 
-      {analysis && (
-        <div className="card bg-surface-2 whitespace-pre-wrap text-sm leading-relaxed max-w-3xl">{analysis}</div>
+      {analyses.length > 0 && (
+        <div className="space-y-2 max-w-3xl">
+          {analyses.map((row, idx) => {
+            const open = openIds.has(row.id);
+            const ts = new Date(row.created_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+            return (
+              <div key={row.id} className="card bg-surface-2">
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    className="flex items-center gap-2 text-left text-xs text-muted flex-1"
+                    onClick={() => toggleAnalysis(row.id)}
+                  >
+                    <span>{open ? "▲" : "▼"}</span>
+                    <span>{ts} · {row.trigger === "scheduled" ? "자동" : "수동"}{idx === 0 ? " · 최신" : ""}</span>
+                  </button>
+                  <button
+                    className="text-xs text-muted hover:text-down"
+                    onClick={() => removeAnalysis(row.id)}
+                  >삭제</button>
+                </div>
+                {open && (
+                  <div className="prose prose-sm prose-invert max-w-none mt-2 text-sm leading-relaxed
+                                  [&_h1]:font-semibold [&_h1]:text-base [&_h1]:mt-3
+                                  [&_h2]:font-semibold [&_h2]:mt-3 [&_h3]:font-semibold [&_h3]:mt-2
+                                  [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5
+                                  [&_strong]:font-semibold [&_code]:text-accent">
+                    <ReactMarkdown>{row.content_md}</ReactMarkdown>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       <div className="card max-w-3xl space-y-2">

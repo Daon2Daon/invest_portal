@@ -12,20 +12,30 @@ async def _client():
 
 def _asset():
     a = MagicMock()
+    a.asset_id = 1
     a.ticker, a.name, a.market, a.currency = "005930", "삼성전자", "KR", "KRW"
     return a
 
 
 @pytest.mark.asyncio
-async def test_analyze_returns_text():
+async def test_analyze_returns_text_and_saves():
+    from datetime import datetime, timezone
+    row = MagicMock(id=7, created_at=datetime(2026, 6, 26, tzinfo=timezone.utc))
     with patch("app.routers.charts._build_png", AsyncMock(return_value=b"\x89PNG")), \
          patch("app.routers.charts.chart_analyzer.analyze_raw",
-               AsyncMock(return_value="**요약**\n\n두번째")), \
+               AsyncMock(return_value=("**요약**\n\n두번째", "gemini/x"))), \
+         patch("app.routers.charts.analysis_store.create_and_prune",
+               AsyncMock(return_value=row)) as store, \
          patch("app.db.AsyncSession.get", AsyncMock(return_value=_asset())):
         async with await _client() as ac:
             resp = await ac.post("/api/charts/1/analyze")
     assert resp.status_code == 200
-    assert resp.json()["analysis"] == "**요약**\n\n두번째"
+    body = resp.json()
+    assert body["analysis"] == "**요약**\n\n두번째"
+    assert body["id"] == 7
+    store.assert_awaited_once()
+    _args, kwargs = store.await_args
+    assert kwargs.get("trigger", "manual") == "manual"
 
 
 @pytest.mark.asyncio
@@ -56,8 +66,10 @@ async def test_send_telegram_best_effort_when_ai_disabled():
     with patch("app.services.notification.chart_dispatch.build_png", AsyncMock(return_value=b"\x89PNG")), \
          patch("app.services.notification.chart_dispatch.get_quote", AsyncMock(return_value=quote)), \
          patch("app.services.notification.chart_dispatch.telegram_service.send_photo", AsyncMock(return_value=True)), \
-         patch("app.services.notification.chart_dispatch.chart_analyzer.analyze",
+         patch("app.services.notification.chart_dispatch.chart_analyzer.analyze_raw",
                AsyncMock(side_effect=chart_analyzer.AnalysisDisabled("off"))), \
+         patch("app.services.notification.chart_dispatch.analysis_store.create_and_prune",
+               AsyncMock()) as store, \
          patch("app.db.AsyncSession.get", AsyncMock(return_value=_asset())):
         async with await _client() as ac:
             resp = await ac.post("/api/charts/1/send-telegram")
@@ -65,6 +77,7 @@ async def test_send_telegram_best_effort_when_ai_disabled():
     assert resp.status_code == 200
     assert body["sent"] == 2
     assert body["analysis_sent"] is False
+    store.assert_not_awaited()   # 분석 비활성 시 저장 안 함
 
 
 @pytest.mark.asyncio
@@ -74,10 +87,15 @@ async def test_send_telegram_sends_analysis_when_enabled():
          patch("app.services.notification.chart_dispatch.get_quote", AsyncMock(return_value=quote)), \
          patch("app.services.notification.chart_dispatch.telegram_service.send_photo", AsyncMock(return_value=True)), \
          patch("app.services.notification.chart_dispatch.telegram_service.send_message", AsyncMock(return_value=True)) as sm, \
-         patch("app.services.notification.chart_dispatch.chart_analyzer.analyze",
-               AsyncMock(return_value=["<b>분석</b>"])), \
+         patch("app.services.notification.chart_dispatch.chart_analyzer.analyze_raw",
+               AsyncMock(return_value=("**분석**", "gemini/x"))), \
+         patch("app.services.notification.chart_dispatch.analysis_store.create_and_prune",
+               AsyncMock()) as store, \
          patch("app.db.AsyncSession.get", AsyncMock(return_value=_asset())):
         async with await _client() as ac:
             resp = await ac.post("/api/charts/1/send-telegram")
     assert resp.json()["analysis_sent"] is True
-    sm.assert_awaited_once()
+    sm.assert_awaited()                       # 변환된 메시지 발송
+    store.assert_awaited_once()               # 마크다운 저장
+    _args, kwargs = store.await_args
+    assert kwargs.get("trigger", "manual") == "manual"  # 수동 발송

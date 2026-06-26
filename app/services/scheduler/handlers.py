@@ -24,7 +24,7 @@ async def handle_chart_analysis(db: AsyncSession, schedule: Schedule) -> None:
     if asset is None:
         _log.warning("스케줄 대상 asset 없음 target_id=%s", schedule.target_id)
         return
-    await chart_dispatch.send_chart_telegram(db, asset)
+    await chart_dispatch.send_chart_telegram(db, asset, trigger="scheduled")
 
 
 async def handle_market_summary(db: AsyncSession, schedule: Schedule) -> None:

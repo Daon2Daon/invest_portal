@@ -18,15 +18,24 @@ def _asset():
 
 
 @pytest.mark.asyncio
-async def test_analyze_returns_text():
+async def test_analyze_returns_text_and_saves():
+    from datetime import datetime, timezone
+    row = MagicMock(id=7, created_at=datetime(2026, 6, 26, tzinfo=timezone.utc))
     with patch("app.routers.charts._build_png", AsyncMock(return_value=b"\x89PNG")), \
          patch("app.routers.charts.chart_analyzer.analyze_raw",
-               AsyncMock(return_value="**요약**\n\n두번째")), \
+               AsyncMock(return_value=("**요약**\n\n두번째", "gemini/x"))), \
+         patch("app.routers.charts.analysis_store.create_and_prune",
+               AsyncMock(return_value=row)) as store, \
          patch("app.db.AsyncSession.get", AsyncMock(return_value=_asset())):
         async with await _client() as ac:
             resp = await ac.post("/api/charts/1/analyze")
     assert resp.status_code == 200
-    assert resp.json()["analysis"] == "**요약**\n\n두번째"
+    body = resp.json()
+    assert body["analysis"] == "**요약**\n\n두번째"
+    assert body["id"] == 7
+    store.assert_awaited_once()
+    _args, kwargs = store.await_args
+    assert kwargs.get("trigger", "manual") == "manual"
 
 
 @pytest.mark.asyncio

@@ -33,7 +33,8 @@ def test_build_prompt_prepends_meta_and_appends_format():
     p = ca._build_prompt("USER", "AAPL", "Apple", "US", ["일봉 (1년)", "주봉 (5년)"])
     assert "AAPL" in p and "Apple" in p and "US" in p
     assert "USER" in p
-    assert "<b>" in p  # 텔레그램 포맷 지시 포함
+    assert "<b>" not in p and "<i>" not in p   # HTML 태그 강제 제거
+    assert "마크다운" in p                       # 마크다운 출력 지시 포함
 
 
 @pytest.mark.asyncio
@@ -71,15 +72,16 @@ async def test_load_config_defaults_prompt():
 
 
 @pytest.mark.asyncio
-async def test_analyze_raw_returns_unconverted_markdown():
+async def test_analyze_raw_returns_markdown_and_model():
     db = MagicMock()
     cfg = {"base_url": "http://gw", "api_key": "K", "model": "m", "prompt": "P"}
     with patch.object(ca, "load_config", AsyncMock(return_value=cfg)), \
          patch.object(ca.llm_client, "analyze_images",
                       AsyncMock(return_value="**요약**")):
-        text = await ca.analyze_raw(db, [(b"d", "image/png"), (b"w", "image/png")],
-                                    "AAPL", "Apple", "US")
+        text, model = await ca.analyze_raw(db, [(b"d", "image/png"), (b"w", "image/png")],
+                                           "AAPL", "Apple", "US")
     assert text == "**요약**"
+    assert model == "m"
     assert "<b>" not in text
 
 

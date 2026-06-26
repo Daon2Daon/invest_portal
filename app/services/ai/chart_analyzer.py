@@ -64,12 +64,13 @@ DEFAULT_PROMPT = """# 역할
 - 단정적 예측 대신 조건부 시나리오로 작성(예: "X 돌파 시 → Y 시도")
 - 전체 분량: 한글 1,500~2,500자 권장"""
 
-_TELEGRAM_FORMAT_INSTRUCTION = """
+_FORMAT_INSTRUCTION = """
 
-[출력 형식 제한]
-- 텔레그램 발송용이므로 아래 HTML 태그만 사용: <b>, <i>, <code>, <pre>
-- 헤딩(#, ##)은 <b>섹션명</b> 형태로, **굵게**는 <b>굵게</b>, *기울임*은 <i>기울임</i>
-- 불릿(-)은 그대로 유지, 1200자 이내 권장"""
+[출력 형식]
+- 마크다운으로 작성합니다. 일반 텍스트/HTML 태그를 직접 쓰지 마세요.
+- 섹션 헤더는 `## 섹션명`, 강조는 `**굵게**`, 약한 강조는 `*기울임*`, 코드/수치는 `` `값` ``.
+- 항목은 `- ` 불릿으로, 개조식으로 작성합니다.
+- 전체 분량: 한글 1,500~2,500자 권장"""
 
 
 
@@ -83,7 +84,7 @@ def _build_prompt(user_prompt: str, ticker: str, name: str, market: str,
         f"[종목 정보]\n- 종목명: {name}\n- 티커: {ticker}\n- 시장: {market}\n- 분석 시점: {now_kst}\n\n"
         f"[제공된 차트 이미지 순서]\n{image_order}{multi_tf}\n\n[분석 지시]\n"
     )
-    return meta + user_prompt + _TELEGRAM_FORMAT_INSTRUCTION
+    return meta + user_prompt + _FORMAT_INSTRUCTION
 
 
 async def load_config(db: AsyncSession) -> dict:
@@ -101,19 +102,20 @@ async def load_config(db: AsyncSession) -> dict:
 
 
 async def analyze_raw(db: AsyncSession, images: list[tuple[bytes, str]],
-                      ticker: str, name: str, market: str) -> str:
-    """이미지(일봉,주봉 순) → LLM 원문(마크다운) 텍스트. 미설정/비활성/실패는 예외 전파."""
+                      ticker: str, name: str, market: str) -> tuple[str, str]:
+    """이미지(일봉,주봉 순) → (LLM 마크다운 원문, 모델명). 미설정/비활성/실패는 예외 전파."""
     cfg = await load_config(db)
     chart_labels = ["일봉 (1년)", "주봉 (5년)"][:len(images)]
     prompt = _build_prompt(cfg["prompt"], ticker, name, market, chart_labels)
-    return await llm_client.analyze_images(
+    text = await llm_client.analyze_images(
         base_url=cfg["base_url"], api_key=cfg["api_key"], model=cfg["model"],
         images=images, prompt=prompt,
         temperature=_TEMPERATURE, max_output_tokens=_MAX_OUTPUT_TOKENS)
+    return text, cfg["model"]
 
 
 async def analyze(db: AsyncSession, images: list[tuple[bytes, str]],
                   ticker: str, name: str, market: str) -> list[str]:
     """이미지(일봉,주봉 순) → 텔레그램 HTML 메시지 조각 리스트. 미설정/비활성/실패는 예외 전파."""
-    raw = await analyze_raw(db, images, ticker, name, market)
+    raw, _model = await analyze_raw(db, images, ticker, name, market)
     return telegram_md.split_message(telegram_md.md_to_telegram_html(raw))
